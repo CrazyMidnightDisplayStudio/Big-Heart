@@ -1,3 +1,5 @@
+using Services;
+//using Unity.Android.Gradle.Manifest;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -8,8 +10,6 @@ public class Progress : MonoBehaviour
     [SerializeField] private float maxValue = 100f;
     [SerializeField] private Slider progressBar;
 
-    [SerializeField] private UnityEvent progressIsComplete;
-
     private void Awake()
     {
         progressBar = GetComponent<Slider>();
@@ -18,23 +18,26 @@ public class Progress : MonoBehaviour
         progressBar.wholeNumbers = false;
     }
 
-    public void FillProgress(float amount, bool isIncrease)
+    private void OnEnable()
     {
-        if (isIncrease)
+        Services.EventService.OnDateProgressChanged += FillProgress;
+    }
+
+    private void OnDisable()
+    {
+        Services.EventService.OnDateProgressChanged -= FillProgress;
+    }
+
+    private void FillProgress(float amount)
+    {
+        progressBar.value += amount;
+        if (progressBar.value >= maxValue)
         {
-            progressBar.value += amount;
-            if (progressBar.value >= maxValue)
-            {
-                progressIsComplete.Invoke();
-            }
+            EventService.DateEnd();
         }
-        else
+        else if (progressBar.value <= 0)
         {
-            progressBar.value -= amount;
-            if (progressBar.value <= 0)
-            {
-                progressBar.value = 0;
-            }
+            progressBar.value = 0;
         }
     }
 }

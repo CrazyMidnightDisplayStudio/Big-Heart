@@ -1,10 +1,9 @@
 using ItemSystem;
+using Services;
 using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    [SerializeField] private Inventory inventory;
-    
     private static Player _instance;
 
     public static Player Instance
@@ -24,11 +23,6 @@ public class Player : MonoBehaviour
     private void Awake()
     {
         MakeSingleton();
-    }
-
-    public Inventory GetInventory()
-    {
-        return inventory;
     }
 
     private void MakeSingleton()

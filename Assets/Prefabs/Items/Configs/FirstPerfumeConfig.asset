@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac103d99057e4c248d35cac81ca7cf3a, type: 3}
+  m_Name: FirstPerfumeConfig
+  m_EditorClassIdentifier: 
+  itemId: FirstPerfume
+  displayName: FirstPerfume
+  slotType: 5
+  description: "\u041C\u043E\u0439 \u043F\u0435\u0440\u0432\u044B\u0439 \u043F\u0430\u0440\u0444\u044E\u043C"
+  icon: {fileID: 1360177305, guid: 4a853209357b67e49949e9a506ef9c45, type: 3}
+  effectValue: 5
+  repeatIntervalTime: 3
+  duration: 0

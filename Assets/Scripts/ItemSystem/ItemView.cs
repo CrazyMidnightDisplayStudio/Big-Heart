@@ -1,3 +1,4 @@
+using Configs;
 using UnityEngine;
 
 namespace ItemSystem
@@ -7,6 +8,15 @@ namespace ItemSystem
         [SerializeField] private string attributeName;
         [SerializeField] private string description;
 
+        private ItemConfig _itemConfig;
+        
+        public void Init(ItemConfig itemConfig)
+        {
+            _itemConfig = itemConfig;
+            attributeName = itemConfig.displayName;
+            description = itemConfig.description;
+        }
+        
         private void OnMouseOver()
         {
             System.Func<string> getTooltipTextFunc = () => $"{attributeName} \n{description}";

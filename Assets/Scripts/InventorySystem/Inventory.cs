@@ -36,14 +36,29 @@ namespace Assets.Scripts.InventorySystem
             }
         }
         //Добавляет предмет в первый пустой слот
-        public void AddItem(BaseItemMono item)
+        public void AddItem(ItemMono item)
         {
             var typeItem = item.GetSlotType();
             if(_slotType.Contains(typeItem))
             {
                 var emptySlot = _listSlots.FirstOrDefault(s => s.Item == null);
-                emptySlot.Add(item);
+                if(emptySlot != null) emptySlot.Add(item);
             }
+        }
+        public void AddItem(ItemMono item, string ID)
+        {
+            var typeItem = item.GetSlotType();
+            if (_slotType.Contains(typeItem))
+            {
+                var emptySlot = _listSlots.FirstOrDefault(s => s.Item == null && s.ID.Equals(ID));
+                if (emptySlot != null) emptySlot.Add(item);
+            }
+        }
+        public ItemMono GetItemById(string ID)
+        {
+            var slot = _listSlots.FirstOrDefault(s => s.Item.Config.itemId == ID);
+            return slot.Item;
+
         }
     }
 }

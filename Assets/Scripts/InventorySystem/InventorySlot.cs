@@ -8,14 +8,17 @@ namespace Assets.Scripts.InventorySystem
     [RequireComponent(typeof(Rigidbody2D))]
     public class InventorySlot: MonoBehaviour
     {
-        private BaseItemMono item = null;
-        public BaseItemMono Item { get { return item; } }
+        private ItemMono item = null;
+        public ItemMono Item { get { return item; } }
         public List<SlotType> SlotType { get; set; }
-
+        public string ID = string.Empty;
         public bool Locked = false;
+        public bool IsOccupied = false;
+        private Collider2D _collider;
         private void Start()
         {
             InitSlot();
+            _collider = GetComponent<Collider2D>();
         }
         void Update()
         {
@@ -26,30 +29,32 @@ namespace Assets.Scripts.InventorySystem
         }
         public void Move()
         {
-            item.transform.position = transform.position;
+            item.transform.position = _collider.bounds.center;
         }
         private void OnTriggerEnter2D(Collider2D collision)
         {
-            var item = collision.gameObject.GetComponent<BaseItemMono>();
+            var item = collision.gameObject.GetComponent<ItemMono>();
             if (item != null && this.item == null)
             {
                 Add(item);
             }
         }
-        public void Add(BaseItemMono item)
+        public void Add(ItemMono item)
         {
             var typeItem = item.GetSlotType();
             if (SlotType.Contains(typeItem))
             {
                 this.item = item;
+                IsOccupied = true;
             }
         }
         private void OnTriggerExit2D(Collider2D collision)
         {
-            var item = collision.gameObject.GetComponent<BaseItemMono>();
+            var item = collision.gameObject.GetComponent<ItemMono>();
             if (item == this.item)
             {
                 this.item = null;
+                IsOccupied = false;
             }
         }
         private void InitSlot()
@@ -59,7 +64,7 @@ namespace Assets.Scripts.InventorySystem
             {
                 collider.isTrigger = true;
             }
-            var rb =GetComponent<Rigidbody2D>();
+            var rb = GetComponent<Rigidbody2D>();
             if(rb != null)
             {
                 rb.constraints = RigidbodyConstraints2D.FreezePositionX | RigidbodyConstraints2D.FreezePositionY;

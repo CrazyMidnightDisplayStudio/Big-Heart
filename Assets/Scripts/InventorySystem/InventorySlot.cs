@@ -9,7 +9,7 @@ namespace Assets.Scripts.InventorySystem
     public class InventorySlot: MonoBehaviour
     {
         private ItemMono item = null;
-        public ItemMono Item { get { return item; } }
+        public ItemMono Item { get { return item; } set { item = value;} }
         public List<SlotType> SlotType { get; set; }
         public string ID = string.Empty;
         public bool Locked = false;
@@ -29,6 +29,7 @@ namespace Assets.Scripts.InventorySystem
         }
         public void Move()
         {
+            if(_collider != null && item != null)
             item.transform.position = _collider.bounds.center;
         }
         private void OnTriggerEnter2D(Collider2D collision)

@@ -58,7 +58,25 @@ namespace Assets.Scripts.InventorySystem
         {
             var slot = _listSlots.FirstOrDefault(s => s.Item.Config.itemId == ID);
             return slot.Item;
-
+        }
+        public void RemoveFromInventory(string ID)
+        {
+            var slot = _listSlots.FirstOrDefault(s => s.Item.Config.itemId == ID);
+            slot.Item = null;
+        }
+        public void RemoveFromInventory(ItemMono item)
+        {
+            var slot = _listSlots.FirstOrDefault(s => s.Item == item);
+            slot.Item = null;
+        }
+        public List<ItemMono> GetAllItem()
+        {
+            var items = new List<ItemMono>();
+            foreach(var slot in _listSlots)
+            {
+                if(slot.Item != null) items.Add(slot.Item);
+            }
+            return items;
         }
     }
 }

@@ -24,11 +24,18 @@ namespace Assets.Scripts.Tests
             {
                 var item1 = await _itemService.CreateItem("FirstPerfume");
                 InventoryManager.Items.AddItem(item1);
-            }
-            if (Input.GetKeyUp(KeyCode.C)) // добавляем в инвентарь эллемент
-            {
                 var item2 = await _itemService.CreateItem("RichPerfume");
                 InventoryManager.Items.AddItem(item2);
+            }
+
+            if (Input.GetKeyUp(KeyCode.B))
+            {
+                Debug.Log($"--> Parameters; {InventoryManager.Parameters.GetAllItem().Count}");
+                Debug.Log($"--> Traits;{InventoryManager.Traits.GetAllItem().Count}");
+                Debug.Log($"--> Items;{InventoryManager.Items.GetAllItem().Count}");
+                Debug.Log($"--> ClothTop;{InventoryManager.ClothTop.GetAllItem().Count}");
+                Debug.Log($"--> ClothBottom;{InventoryManager.ClothBottom.GetAllItem().Count}");
+                Debug.Log($"--> Shoes;{InventoryManager.Shoes.GetAllItem().Count}");
             }
         }
     }

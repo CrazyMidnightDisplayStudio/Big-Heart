@@ -1,7 +1,0 @@
-﻿{
-    "Services": {
-        "Inventory": {
-            "Items": ["FirstPerfume", "RichPerfume"]
-        }
-    }
-}

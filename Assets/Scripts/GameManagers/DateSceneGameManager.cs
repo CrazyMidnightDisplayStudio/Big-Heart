@@ -57,14 +57,11 @@ namespace Rounds
             EventService.Instance.OnAddPositiveEffect -= AddingPositiveProgress;
         }
 
-        protected override async void Start()
+        protected override void Start()
         {
             base.Start();
             Initialization.Initialize();
-            await ItemService.Instance.CreateItem("FirstPerfume");
-            InventoryService.Instance.EquipItem("FirstPerfume");
-            await ItemService.Instance.CreateItem("RichPerfume");
-            InventoryService.Instance.EquipItem("RichPerfume");
+            // TODO: Add started content
             StartDate();
         }
         

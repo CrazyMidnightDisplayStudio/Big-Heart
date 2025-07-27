@@ -15,9 +15,9 @@ namespace Editor
             DrawDefaultInspector();
 
             ItemMono itemMono = (ItemMono)target;
-            ItemConfig itemConfig = itemMono.Config;
+            ItemDefinition itemDefinition = itemMono.Definition;
 
-            if (itemConfig == null)
+            if (itemDefinition == null)
             {
                 EditorGUILayout.HelpBox("У предмета не назначен ItemConfig!", MessageType.Warning);
                 return;
@@ -54,14 +54,14 @@ namespace Editor
             }
 
             // Устанавливаем Addressable Name = itemId
-            if (entry.address != itemConfig.itemId)
+            if (entry.address != itemDefinition.itemTag)
             {
-                entry.SetAddress(itemConfig.itemId);
+                entry.SetAddress(itemDefinition.itemTag);
                 settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryModified, entry, true);
                 AssetDatabase.SaveAssets();
             }
 
-            EditorGUILayout.HelpBox($"Addressable Name обновлён: {itemConfig.itemId}", MessageType.Info);
+            EditorGUILayout.HelpBox($"Addressable Name обновлён: {itemDefinition.itemTag}", MessageType.Info);
         }
     }
 }

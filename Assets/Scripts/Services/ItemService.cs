@@ -1,96 +1,51 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using Base;
 using ItemSystem;
 using UnityEngine;
 
 namespace Services
 {
+    /// <summary> Единая точка, через которую игровой код спавнит и удаляет предметы. </summary>
     public class ItemService : BaseServiceSingleton<ItemService>
     {
-        private Dictionary<string, ItemMono> _itemsById;
-        private ItemFactory _itemFactory;
-        
+        // глобальный реестр уникальных Id
+        private EntityRegistry _registry = EntityRegistry.Instance;
+
+        // отвечает за Instantiate + Init
+        private ItemFactory _factory = new();
+
         public override void Init()
         {
             base.Init();
-            _itemsById = new Dictionary<string, ItemMono>();
-            _itemFactory = new ItemFactory();
-            IsInitialized = true;
-            Debug.Log("ItemService initialized");
+            Debug.Log("<color=green>ItemService ready</color>");
         }
 
-        public async Task<ItemMono> CreateItem(string itemId, Vector3 position = default, Transform parent = null)
+        /*──────────────────────── API для остального кода ─────────────────────*/
+        public ItemMono Create(ItemDefinition def, Vector3 pos = default, Transform parent = null)
+            => _factory.Spawn(def, pos, parent);
+
+        public void Destroy(string instanceId)
         {
-            if (_itemsById.TryGetValue(itemId, out var existingItem))
-            {
-                if (parent == null || existingItem.transform.parent == parent)
-                {
-                    Debug.LogWarning($"[ItemService] Предмет {itemId} уже существует в {parent?.name ?? "сцене"}.");
-                    return existingItem;
-                }
-            }
+            if (!_registry.TryGet(instanceId, out ItemMono item)) return;
 
-            try
-            {
-                var item = await _itemFactory.CreateItemAsync(itemId, position, parent);
-                
-                if (item == null)
-                {
-                    Debug.LogError($"[ItemService] Не удалось создать предмет {itemId}, item == null.");
-                    return null;
-                }
-
-                RegisterItem(item);
-                return item;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ItemService] Ошибка создания предмета {itemId}: {e}");
-                return null;
-            }
+            _registry.Unregister(item); // убираем из реестра
+            Object.Destroy(item.gameObject); // уничтожаем в сцене
         }
 
-        public void DestroyItem(string itemId)
-        {
-            if (_itemsById.TryGetValue(itemId, out var item))
-            {
-                UnregisterItem(itemId);
-                _itemsById.Remove(itemId);
-                Destroy(item.gameObject);
-                Debug.Log($"[ItemService] Предмет {itemId} удалён.");
-            }
-        }
+        /// Получить ссылку на Item по Id. Возвращает true, если нашёл.
+        public bool TryGet(string instanceId, out ItemMono item)
+            => _registry.TryGet(instanceId, out item);
 
-        public ItemMono GetItem(string itemId) => _itemsById.TryGetValue(itemId, out var item) ? item : null;
+        /// Проверка существования
+        public bool Exists(string instanceId) => _registry.TryGet<ItemMono>(instanceId, out _);
 
-        public bool ContainsItem(string itemId)
-        {
-            return _itemsById.ContainsKey(itemId);
-        }
-        
-        private void RegisterItem(ItemMono item)
-        {
-            if (item == null || string.IsNullOrEmpty(item.ItemId)) return;
-
-            if (!_itemsById.ContainsKey(item.ItemId))
-            {
-                _itemsById[item.ItemId] = item;
-                Debug.Log($"[ItemService] Предмет {item.ItemId} добавлен в список регистраций.");
-            }
-            else
-            {
-                Debug.Log($"[ItemService] Предмет {item.ItemId} уже есть в списке регистраций.");
-            }
-        }
-
-        private void UnregisterItem(string itemId)
-        {
-            if (_itemsById.TryGetValue(itemId, out ItemMono item))
-            {
-                _itemsById.Remove(itemId);
-                Debug.Log($"[ItemService] Предмет {itemId} убран из списка регистраций.");
-            }
-        }
+        // TODO: сделать поиск всех предметов по тэгу
+        // public IEnumerable<ItemMono> AllWithTag(string tag)
+        // {
+        //     // Требуется свойство .All в EntityRegistry: IReadOnlyCollection<IEntity> All
+        //     foreach (var e in _registry.All)
+        //         if (e is ItemMono it && it.Tag == tag)
+        //             yield return it;
+        // }
     }
 }

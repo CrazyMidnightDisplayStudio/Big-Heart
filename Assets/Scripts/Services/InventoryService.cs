@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using Base;
 using ItemSystem;
 using SaveLoadSystem;
 using UnityEngine;
 
 namespace Services
 {
-    public class InventoryService : BaseServiceSingleton<InventoryService>, ISaveLoadObject
+    public class InventoryService : BaseServiceSingleton<InventoryService>
     {
         public string SaveKey => "Inventory";
         
@@ -59,13 +60,13 @@ namespace Services
 
         public bool EquipItem(string itemId)
         {
-            if (!ItemService.Instance.ContainsItem(itemId))
+            if (EntityRegistry.Instance.TryGet<ItemMono>(itemId, out var item))
             {
-                return false;
+                EquipItem(item);
+                return true;
             }
-            
-            EquipItem(ItemService.Instance.GetItem(itemId));
-            return true;
+
+            return false;
         }
 
         public bool EquipItem(ItemMono item)
@@ -109,25 +110,10 @@ namespace Services
             List<string> items = new List<string>();
             foreach (var item in _items)
             {
-                items.Add(item.ItemId);
+                items.Add(item.Tag);
             }
 
             return new InventorySaveData { items = items };
-        }
-
-        public void LoadFromSaveData(object data)
-        {
-            if (data is not InventorySaveData saveData)
-            {
-                Debug.LogError("Invalid save data");
-                return;
-            }
-            
-            foreach (var itemId in saveData.items)
-            {
-                ItemService.Instance.CreateItem(itemId);
-                EquipItem(ItemService.Instance.GetItem(itemId));
-            }
         }
     }
     

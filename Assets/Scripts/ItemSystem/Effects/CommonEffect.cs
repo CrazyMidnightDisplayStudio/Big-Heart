@@ -7,14 +7,14 @@ namespace ItemSystem
     public class CommonEffect : IEffect
     {
         private Animator _animator;
-        private ItemConfig _itemConfig;
+        private ItemDefinition _itemDefinition;
         
         public bool IsActive { get; private set; }
         
-        public CommonEffect(Animator animator, ItemConfig config)
+        public CommonEffect(Animator animator, ItemDefinition definition)
         {
             _animator = animator;
-            _itemConfig = config;
+            _itemDefinition = definition;
         }
         
         public void OnEquip()
@@ -28,7 +28,7 @@ namespace ItemSystem
         public void OnDateStart()
         {
             IsActive = true;
-            CoroutineService.Instance.RunRepeatingCoroutine(PeriodicEffect, _itemConfig.repeatIntervalTime, () => !IsActive);
+            CoroutineService.Instance.RunRepeatingCoroutine(PeriodicEffect, _itemDefinition.repeatIntervalTime, () => !IsActive);
         }
 
         public void OnDateEnd()
@@ -38,7 +38,7 @@ namespace ItemSystem
 
         public void PeriodicEffect()
         {
-            EventService.Instance.OnAddPositiveEffect(_itemConfig.effectValue);
+            EventService.Instance.OnAddPositiveEffect(_itemDefinition.effectValue);
         }
     }
 }

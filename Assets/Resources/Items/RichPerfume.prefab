@@ -84,6 +84,9 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -210,4 +213,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90a3208d53b042ee8784c25c847c043f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemConfig: {fileID: 11400000, guid: 72d6366ce74365949b4f81d422454e7a, type: 2}
+  itemDefinition: {fileID: 11400000, guid: 632051df342cd5d43a7d8cbb4c34d4eb, type: 2}

@@ -4,18 +4,18 @@ using UnityEngine;
 
 namespace ItemSystem.Editor
 {
-    [CustomEditor(typeof(ItemConfig))]
+    [CustomEditor(typeof(ItemDefinition))]
     public class ItemConfigPreviewEditor : UnityEditor.Editor
     {
         public override Texture2D RenderStaticPreview(string assetPath, Object[] subAssets, int width, int height)
         {
-            ItemConfig config = (ItemConfig)target;
+            ItemDefinition definition = (ItemDefinition)target;
 
-            if (config.icon == null)
+            if (definition.icon == null)
                 return base.RenderStaticPreview(assetPath, subAssets, width, height);
 
             // Получаем спрайт
-            Sprite sprite = config.icon;
+            Sprite sprite = definition.icon;
 
             // Создаём новую текстуру только для области спрайта
             Texture2D croppedTexture = new Texture2D((int)sprite.rect.width, (int)sprite.rect.height);

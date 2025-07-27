@@ -1,20 +1,20 @@
-using Configs;
+using Base;
 using UnityEngine;
 
 namespace ItemSystem
 {
-    public class ItemView : MonoBehaviour
+    public class ItemView : MonoBehaviour, IViewMarker
     {
         [SerializeField] private string attributeName;
         [SerializeField] private string description;
 
-        private ItemConfig _itemConfig;
+        private ItemDefinition _itemDefinition;
         
-        public void Init(ItemConfig itemConfig)
+        public void Init(ItemDefinition itemDefinition)
         {
-            _itemConfig = itemConfig;
-            attributeName = itemConfig.displayName;
-            description = itemConfig.description;
+            _itemDefinition = itemDefinition;
+            attributeName = itemDefinition.displayName;
+            description = itemDefinition.description;
         }
         
         private void OnMouseOver()

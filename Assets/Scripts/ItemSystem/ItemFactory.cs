@@ -1,49 +1,23 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System;
+using Base;
 using ItemSystem;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
+using Object = UnityEngine.Object;
 
-public class ItemFactory
+public sealed class ItemFactory : IEntityFactory<ItemMono, ItemDefinition>
 {
-    private readonly Dictionary<string, GameObject> _prefabCache = new(); // Кэш префабов
+    private readonly EntityRegistry _registry = EntityRegistry.Instance;
 
-    /// <summary>
-    /// Загружает предмет из Addressables и создаёт его в сцене.
-    /// </summary>
-    public async Task<ItemMono> CreateItemAsync(string itemId, Vector3 position = default, Transform parent = null)
+    public ItemMono Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
     {
-        if (!_prefabCache.TryGetValue(itemId, out GameObject prefab))
-        {
-            AsyncOperationHandle<GameObject> handle = Addressables.LoadAssetAsync<GameObject>(itemId);
-            prefab = await handle.Task;
-            
-            if (handle.Status != AsyncOperationStatus.Succeeded || prefab == null)
-            {
-                Debug.LogError($"[ItemFactory] Ошибка загрузки предмета {itemId}: handle.Status={handle.Status}");
-                return null;
-            }
+        if (def == null) throw new ArgumentNullException(nameof(def));
+        if (def.prefab == null) throw new Exception($"{def.name} prefab is null");
 
-            _prefabCache[itemId] = prefab; // Кешируем только успешную загрузку
-        }
-        else
-        {
-            Debug.Log($"[ItemFactory] Используем закешированный префаб для {itemId}");
-        }
+        var go = Object.Instantiate(def.prefab, pos, Quaternion.identity, parent);
+        var item = go.GetComponent<ItemMono>() ?? go.AddComponent<ItemMono>();
 
-        // Создаём объект на сцене
-        GameObject itemObject = Object.Instantiate(prefab, position, Quaternion.identity, parent);
-        ItemMono newItem = itemObject.GetComponent<ItemMono>();
-
-        if (newItem == null)
-        {
-            Debug.LogError($"[ItemFactory] Ошибка: У префаба {itemId} отсутствует ItemMono!");
-            Object.Destroy(itemObject);
-            return null;
-        }
-
-        Debug.Log($"[ItemFactory] Создан предмет {itemId}.");
-        return newItem;
+        item.Init(def);
+        _registry.Register(item);
+        return item;
     }
 }

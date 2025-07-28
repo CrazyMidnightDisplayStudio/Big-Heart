@@ -4,7 +4,7 @@ using UnityEngine;
 using ItemSystem;
 using System.Collections.Generic;
 
-namespace Editor
+namespace EditorTools
 {
     public class ItemSpawnerWindow : EditorWindow
     {
@@ -67,5 +67,5 @@ namespace Editor
             }
         }
     }
-#endif
 }
+#endif

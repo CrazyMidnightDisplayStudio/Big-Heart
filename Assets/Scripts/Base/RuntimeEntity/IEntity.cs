@@ -1,14 +1,18 @@
 ﻿namespace Base
 {
     /// <summary>
-    /// IEntity - интерфейс, который должен быть у всех объектов на сцене
-    /// чтобы любой объект можно было найти по id
+    /// Маркер для любого объекта на сцене: нужен только Id.
+    /// Работать через него будут: EntityRegistry, системы сохранения и т.д.
     /// </summary>
     public interface IEntity
     {
-        string Id { get; } // уникальный в сессии
+        string Id { get; }        // уникален в сессии / сейве
     }
 
+    /// <summary>
+    /// Сильный интерфейс с привязкой к ScriptableObject-дефиниции.
+    /// Используется там, где нужна типобезопасность (фабрики, геймплей-логика).
+    /// </summary>
     public interface IEntity<TDefinition> : IEntity
         where TDefinition : BaseEntityDefinition
     {

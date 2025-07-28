@@ -5,71 +5,93 @@ using UnityEngine;
 
 namespace Services
 {
-    public class CoroutineService : BaseServiceSingleton<CoroutineService>
+    public sealed class CoroutineService : BaseServiceSingleton<CoroutineService>
     {
-        private readonly Dictionary<string, Coroutine> _runningCoroutines = new Dictionary<string, Coroutine>();
-        
+        readonly Dictionary<uint, Coroutine> _running = new();
+        uint _nextId = 1; // 0 зарезервирован как «невалидный»
+
         public override void Init()
         {
             base.Init();
             Debug.Log("CoroutineService initialized");
         }
 
-        public string RunCoroutine(Action action, float delay = 0f)
+        /*──────────────────────────────────── public API ───────────────────────────────────*/
+
+        public uint RunCoroutine(Action action, float delay = 0f) =>
+            RunCoroutine(WrapAction(action, delay));
+
+        public uint RunCoroutine(IEnumerator routine)
         {
-            return RunCoroutine(WrapAction(action, delay));
+            uint id = NextId();
+            Coroutine c = StartCoroutine(Wrapped(routine, id));
+            _running[id] = c;
+            return id;
         }
 
-        public string RunCoroutine(IEnumerator coroutine)
+        /// <summary>Повторяем <paramref name="action"/> каждые <paramref name="interval"/> сек.,
+        /// пока <paramref name="stopCondition"/> не вернёт true.</summary>
+        public uint RunRepeatingCoroutine(Action action, float interval, Func<bool> stopCondition)
         {
-            string coroutineId = Guid.NewGuid().ToString();
-            Coroutine runningCoroutine = StartCoroutine(WrappedCoroutine(coroutine, coroutineId));
-            _runningCoroutines[coroutineId] = runningCoroutine;
-            return coroutineId;
+            uint id = NextId();
+            Coroutine c = StartCoroutine(Repeating(action, interval, stopCondition, id)); // ← id
+            _running[id] = c;
+            return id;
         }
 
-        /// <summary>
-        /// Запускает повторяющийся метод с интервалом, пока условие остановки не станет истинным.
-        /// </summary>
-        public void RunRepeatingCoroutine(Action action, float interval, Func<bool> stopCondition)
+        /*—  остановка  —*/
+        public void Stop(uint id)
         {
-            StartCoroutine(RepeatingCoroutine(action, interval, stopCondition));
+            if (_running.TryGetValue(id, out var c))
+            {
+                StopCoroutine(c);
+                _running.Remove(id);
+            }
+        }
+
+        public void Stop(IEnumerable<uint> ids)
+        {
+            foreach (var id in ids) Stop(id);
         }
 
         public void StopAllRunningCoroutines()
         {
-            foreach (var coroutine in _runningCoroutines.Values)
-            {
-                StopCoroutine(coroutine);
+            foreach (var c in _running.Values) StopCoroutine(c);
+            _running.Clear();
+        }
+
+        /*─────────────────────────────────── internal ─────────────────────────────────────*/
+
+        uint NextId()
+        {
+            if (_nextId == 0) {
+                _nextId = 1; // wrap-around после uint.MaxValue
+                Debug.LogError("CoroutineService: coroutine counter OVERFLOWED!!!");
             }
-
-            _runningCoroutines.Clear();
+            return _nextId++;
         }
 
-        private IEnumerator WrappedCoroutine(IEnumerator coroutine, string coroutineId)
+        IEnumerator Wrapped(IEnumerator routine, uint id)
         {
-            yield return StartCoroutine(coroutine);
-            _runningCoroutines.Remove(coroutineId);
+            yield return StartCoroutine(routine);
+            _running.Remove(id); // auto-cleanup
         }
 
-        private IEnumerator WrapAction(Action action, float delay)
+        IEnumerator WrapAction(Action action, float delay)
         {
-            if (delay > 0)
-                yield return new WaitForSeconds(delay);
-
+            if (delay > 0) yield return new WaitForSeconds(delay);
             action?.Invoke();
         }
 
-        /// <summary>
-        /// Выполняет действие с заданным интервалом, пока `stopCondition` не вернёт `true`.
-        /// </summary>
-        private IEnumerator RepeatingCoroutine(Action action, float interval, Func<bool> stopCondition)
+        IEnumerator Repeating(Action action, float interval, Func<bool> stop, uint id)
         {
-            while (!stopCondition())
+            while (!stop())
             {
                 action?.Invoke();
                 yield return new WaitForSeconds(interval);
             }
+
+            _running.Remove(id); // снимаем id по завершении
         }
     }
 }

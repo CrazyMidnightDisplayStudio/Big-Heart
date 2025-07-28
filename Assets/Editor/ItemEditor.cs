@@ -4,9 +4,9 @@ using UnityEditor;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.AddressableAssets;
 
-namespace Editor
+namespace EditorTools
 {
-    [CustomEditor(typeof(ItemMono), true)]
+    [CustomEditor(typeof(ItemMonoEntity), true)]
     public class ItemEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
@@ -14,8 +14,8 @@ namespace Editor
             // Отображаем стандартный инспектор
             DrawDefaultInspector();
 
-            ItemMono itemMono = (ItemMono)target;
-            ItemDefinition itemDefinition = itemMono.Definition;
+            ItemMonoEntity itemMonoEntity = (ItemMonoEntity)target;
+            ItemDefinition itemDefinition = itemMonoEntity.Definition;
 
             if (itemDefinition == null)
             {
@@ -39,7 +39,7 @@ namespace Editor
             }
 
             // Получаем путь к префабу предмета
-            string assetPath = AssetDatabase.GetAssetPath(itemMono.gameObject);
+            string assetPath = AssetDatabase.GetAssetPath(itemMonoEntity.gameObject);
             if (string.IsNullOrEmpty(assetPath))
             {
                 return;

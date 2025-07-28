@@ -1,5 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using Base;
+using ItemSystem.Effects;
 
 namespace ItemSystem
 {
@@ -21,8 +23,6 @@ namespace ItemSystem
         public Sprite icon;
 
         [Header("Gameplay")]
-        public int   effectValue;
-        public float repeatIntervalTime;
-        public float duration;
+        public List<EffectAsset> effects;
     }
 }

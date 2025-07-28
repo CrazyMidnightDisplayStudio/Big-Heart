@@ -3,23 +3,24 @@ using UnityEngine;
 
 namespace ItemSystem
 {
-    public class ItemView : MonoBehaviour, IViewMarker
+    public class ItemView : MonoBehaviour, IViewBinder<ItemDefinition>
     {
-        [SerializeField] private string attributeName;
-        [SerializeField] private string description;
+        private string _attributeName;
+        private string _description;
 
         private ItemDefinition _itemDefinition;
+        public Sprite GetSprite => _itemDefinition.icon;
         
-        public void Init(ItemDefinition itemDefinition)
+        public void Bind(ItemDefinition definition)
         {
-            _itemDefinition = itemDefinition;
-            attributeName = itemDefinition.displayName;
-            description = itemDefinition.description;
+            _itemDefinition = definition;
+            _attributeName = definition.displayName;
+            _description = definition.description;
         }
         
         private void OnMouseOver()
         {
-            System.Func<string> getTooltipTextFunc = () => $"{attributeName} \n{description}";
+            System.Func<string> getTooltipTextFunc = () => $"{_attributeName} \n{_description}";
             TooltipScreenSpaceUI.ShowTooltip_Static(getTooltipTextFunc);
         }
 
@@ -27,5 +28,6 @@ namespace ItemSystem
         {
             TooltipScreenSpaceUI.HideTooltip_Static();
         }
+
     }
 }

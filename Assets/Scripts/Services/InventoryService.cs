@@ -13,24 +13,24 @@ namespace Services
         private float _placementRadius;
         
         // это нужно только для того, чтобы следить за размером инвентаря
-        private Dictionary<SlotType, List<ItemMono>> _itemsBySlot;
+        private Dictionary<SlotType, List<ItemMonoEntity>> _itemsBySlot;
         private Dictionary<SlotType, int> _inventoryCapacity;
 
         // а вот тут уже сами айтемы списком.
         // SerializeField только для наглядности в инспекторе, его нельзя менять через инспектор, только смотреть
-        [SerializeField] private List<ItemMono> _items;
+        [SerializeField] private List<ItemMonoEntity> _items;
         
-        public List<ItemMono> Items => _items;
+        public List<ItemMonoEntity> Items => _items;
 
         public override void Init()
         {
             base.Init();
             _placementRadius = ConfigService.Instance.inventoryConfig.placementRadius;
             _inventoryCapacity = ConfigService.Instance.inventoryConfig.ToDictionary();
-            _itemsBySlot = new Dictionary<SlotType, List<ItemMono>>();
+            _itemsBySlot = new Dictionary<SlotType, List<ItemMonoEntity>>();
             foreach (var slotType in _inventoryCapacity.Keys)
             {
-                _itemsBySlot[slotType] = new List<ItemMono>();
+                _itemsBySlot[slotType] = new List<ItemMonoEntity>();
             }
             Debug.Log("InventoryService initialized");
         }
@@ -60,7 +60,7 @@ namespace Services
 
         public bool EquipItem(string itemId)
         {
-            if (EntityRegistry.Instance.TryGet<ItemMono>(itemId, out var item))
+            if (EntityRegistry.Instance.TryGet<ItemMonoEntity>(itemId, out var item))
             {
                 EquipItem(item);
                 return true;
@@ -69,21 +69,21 @@ namespace Services
             return false;
         }
 
-        public bool EquipItem(ItemMono item)
+        public bool EquipItem(ItemMonoEntity itemMono)
         {
-            if (item == null)
+            if (itemMono == null)
             {
                 Debug.LogWarning("Item is null");
                 return false;
             }
             
-            var equippedItemsCount = _itemsBySlot[item.GetSlotType()].Count;
-            var capacityForItem = _inventoryCapacity[item.GetSlotType()];
+            var equippedItemsCount = _itemsBySlot[itemMono.GetSlotType()].Count;
+            var capacityForItem = _inventoryCapacity[itemMono.GetSlotType()];
             if (equippedItemsCount < capacityForItem)
             {
-                _itemsBySlot[item.GetSlotType()].Add(item);
-                _items.Add(item);
-                item.Effect.OnEquip();
+                _itemsBySlot[itemMono.GetSlotType()].Add(itemMono);
+                _items.Add(itemMono);
+                itemMono.Effect.OnEquip();
                 ArrangeItemsInCircle();
                 return true;
             }
@@ -91,14 +91,14 @@ namespace Services
             return false;
         }
 
-        public bool UnEquipItem(ItemMono item)
+        public bool UnEquipItem(ItemMonoEntity itemMono)
         {
-            var equippedItemsCount = _itemsBySlot[item.GetSlotType()].Count;
+            var equippedItemsCount = _itemsBySlot[itemMono.GetSlotType()].Count;
             if (equippedItemsCount > 0)
             {
-                _itemsBySlot[item.GetSlotType()].Remove(item);
-                _items.Remove(item);
-                item.Effect.OnUnEquip();
+                _itemsBySlot[itemMono.GetSlotType()].Remove(itemMono);
+                _items.Remove(itemMono);
+                itemMono.Effect.OnUnEquip();
                 ArrangeItemsInCircle();
                 return true;
             }

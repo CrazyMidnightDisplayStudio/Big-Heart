@@ -20,6 +20,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b19cc3bfe9ce941459bd29c4b1b10aef
+    m_Address: Assets/Resources/Items/Item.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e806e0de00187d74a921c2c35a58143f
     m_Address: Perfume
     m_ReadOnly: 0

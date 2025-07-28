@@ -15,6 +15,7 @@ namespace Base
         {
         }
 
+        // TODO: заменить Dictionary<string, IEntity> на Dictionary<Guid, IEntity>
         private readonly Dictionary<string, IEntity> _map = new();
 
         public event Action<IEntity> Added, Removed;

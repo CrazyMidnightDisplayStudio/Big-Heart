@@ -1,5 +1,5 @@
 ﻿using System;
-using ItemSystem;
+using ItemSystem.Effects;
 using Services;
 using UnityEngine;
 

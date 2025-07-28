@@ -41,7 +41,7 @@ namespace Base
             {
                 Debug.LogWarning($"{name}: prefab reference is <null>");
             }
-            else if (!prefab.scene.IsValid() && prefab.GetComponentInChildren<IViewMarker>() == null)
+            else if (!prefab.scene.IsValid() && prefab.GetComponentInChildren<IView>() == null)
             {
                 Debug.LogWarning($"{name}: prefab не содержит IViewMarker (проверь иерархию)");
             }
@@ -64,6 +64,6 @@ namespace Base
             }
             return sb.ToString();
         }
-#endif
     }
+#endif
 }

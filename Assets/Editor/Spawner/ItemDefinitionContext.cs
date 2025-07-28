@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using ItemSystem;
 
-namespace Editor
+namespace EditorTools
 {
     public static class ItemDefinitionContext
     {
@@ -23,5 +23,5 @@ namespace Editor
             ItemSpawner.Spawn(def, pos);
         }
     }
-#endif
 }
+#endif

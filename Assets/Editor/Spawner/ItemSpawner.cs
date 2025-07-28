@@ -4,12 +4,12 @@ using UnityEngine;
 using ItemSystem;
 using Base;
 
-namespace Editor
+namespace EditorTools
 {
     public static class ItemSpawner
     {
         /// Инстанцирует префаб, инициализирует ItemMono, кладёт в реестр + Undo.
-        public static ItemMono Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
+        public static ItemMonoEntity Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
         {
             if (!def)          throw new System.ArgumentNullException(nameof(def));
             if (!def.prefab)   throw new System.Exception($"{def.name}: prefab reference is null");
@@ -20,7 +20,7 @@ namespace Editor
             Undo.RegisterCreatedObjectUndo(go, "Spawn Item");
 
             // 2. Init + Registry
-            var item = go.GetComponent<ItemMono>() ?? go.AddComponent<ItemMono>();
+            var item = go.GetComponent<ItemMonoEntity>() ?? go.AddComponent<ItemMonoEntity>();
             item.Init(def);
             EntityRegistry.Instance.Register(item);
 

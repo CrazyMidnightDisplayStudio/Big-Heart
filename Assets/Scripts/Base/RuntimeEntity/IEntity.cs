@@ -1,4 +1,6 @@
-﻿namespace Base
+﻿using System;
+
+namespace Base
 {
     /// <summary>
     /// Маркер для любого объекта на сцене: нужен только Id.
@@ -6,17 +8,16 @@
     /// </summary>
     public interface IEntity
     {
-        string Id { get; }        // уникален в сессии / сейве
+        Guid Id { get; }
     }
 
     /// <summary>
     /// Сильный интерфейс с привязкой к ScriptableObject-дефиниции.
     /// Используется там, где нужна типобезопасность (фабрики, геймплей-логика).
     /// </summary>
-    public interface IEntity<TDefinition> : IEntity
+    public interface IEntity<out TDefinition> : IEntity
         where TDefinition : BaseEntityDefinition
     {
         TDefinition Definition { get; }
-        void Init(TDefinition definition);
     }
 }

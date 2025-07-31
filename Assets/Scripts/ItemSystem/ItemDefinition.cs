@@ -5,24 +5,21 @@ using ItemSystem.Effects;
 
 namespace ItemSystem
 {
-    
-    [CreateAssetMenu(menuName = "Entities/ItemDefinition", fileName = "NewItemDefinition")]
+    [CreateAssetMenu(menuName = "Entities/Item Definition", fileName = "NewItemDefinition")]
     public class ItemDefinition : BaseEntityDefinition
     {
-        [Header("BaseParams")]
-        [Tooltip("Категория или групповой фильтр (не уникальный)")]
-        public string itemTag;
-
-        [Header("View")]
+        [Header("Display")]
         public string displayName;
-        public SlotType slotType;
-        [TextArea(3, 5)]
-        public string description;
-
-        [Header("Sprite")]
+        [TextArea(3, 5)] public string description;
         public Sprite icon;
 
         [Header("Gameplay")]
+        public string itemTag;
+        public SlotType slotType;
         public List<EffectAsset> effects;
+
+        [Header("Prefab (optional)")]
+        [Tooltip("Оставь пустым, если годится Generic-префаб")]
+        public GameObject overridePrefab;
     }
 }

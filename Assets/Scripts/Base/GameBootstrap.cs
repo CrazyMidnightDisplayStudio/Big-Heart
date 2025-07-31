@@ -1,0 +1,56 @@
+﻿using DI;
+using UnityEngine;
+using ItemSystem;
+using Services;
+
+namespace Base
+{
+    [DefaultExecutionOrder(-1000)] // запускаемся раньше большинства скриптов
+    public class GameBootstrap : MonoBehaviour
+    {
+        [Header("Fallback prefab")] [SerializeField]
+        private GameObject genericItemPrefab; // drag-and-drop из Project
+
+        private static bool _bootstrapped; // статика == глобальный флаг
+
+        /*──────────────────────────── Bootstrap ───────────────────────────*/
+        private void Awake()
+        {
+            /* ─── Анти-дублирование ─── */
+            if (_bootstrapped)
+            {
+                Debug.LogWarning(
+                    $"<color=yellow>Duplicate GameBootstrap on {name} — destroying</color>");
+                Destroy(gameObject);
+                return;
+            }
+
+            _bootstrapped = true;
+            DontDestroyOnLoad(gameObject); // живём между сценами
+
+            /* ─── Сборка зависимостей ─── */
+            var registry = EntityRegistry.Instance;
+
+            if (genericItemPrefab == null)
+                genericItemPrefab = Resources.Load<GameObject>("Prefabs/GenericItem");
+
+            var itemFactory = new ItemFactory(genericItemPrefab);
+            var itemService = new ItemService(itemFactory, registry);
+
+            ServiceRegistry.Register<IItemService>(itemService);
+
+            Debug.Log("<color=green>GameBootstrap: services registered</color>");
+        }
+
+        /*──────────────────── Проверка «забыли-ли мы Bootstrap» ─────────────*/
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void _CheckBootstrapPresence()
+        {
+            if (_bootstrapped) return;
+
+            Debug.LogWarning(
+                "<color=yellow>GameBootstrap not found in first scene! " +
+                "Core services were NOT initialised.</color>");
+        }
+    }
+}

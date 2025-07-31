@@ -1,23 +1,29 @@
-﻿using System;
-using Base;
-using ItemSystem;
+﻿// ItemFactory.cs
+
 using UnityEngine;
-using Object = UnityEngine.Object;
+using Base;
 
-public sealed class ItemFactory : IEntityFactory<ItemMonoEntity, ItemDefinition>
+namespace ItemSystem
 {
-    private readonly EntityRegistry _registry = EntityRegistry.Instance;
-
-    public ItemMonoEntity Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
+    public sealed class ItemFactory : IEntityFactory<ItemPresenter, ItemDefinition>
     {
-        if (def == null) throw new ArgumentNullException(nameof(def));
-        if (def.prefab == null) throw new Exception($"{def.name} prefab is null");
+        private readonly GameObject _genericPrefab;
+        private readonly EntityRegistry _registry = EntityRegistry.Instance;
 
-        var go = Object.Instantiate(def.prefab, pos, Quaternion.identity, parent);
-        var item = go.GetComponent<ItemMonoEntity>() ?? go.AddComponent<ItemMonoEntity>();
+        public ItemFactory(GameObject genericPrefab) => _genericPrefab = genericPrefab;
 
-        item.Init(def);
-        _registry.Register(item);
-        return item;
+        public ItemPresenter Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
+        {
+            if (def == null) throw new System.ArgumentNullException(nameof(def));
+
+            GameObject prefab = def.overridePrefab ?? _genericPrefab;
+            GameObject go = prefab != null
+                ? Object.Instantiate(prefab, pos, Quaternion.identity, parent)
+                : new GameObject($"Item_{def.name}", typeof(SpriteRenderer));
+
+            var presenter = go.GetComponent<ItemPresenter>() ?? go.AddComponent<ItemPresenter>();
+            presenter.Init(def);
+            return presenter;
+        }
     }
 }

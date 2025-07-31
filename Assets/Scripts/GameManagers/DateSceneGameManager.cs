@@ -97,11 +97,11 @@ namespace Rounds
 
         private void ApplyEffectsOnItems(Action<IEffect> effectAction)
         {
-            var items = InventoryService.Instance.Items;
-            foreach (var item in items)
-            {
-                effectAction?.Invoke(item.Effect);
-            }
+            // var items = InventoryService.Instance.Items;
+            // foreach (var item in items)
+            // {
+            //     effectAction?.Invoke(item.Effect);
+            // }
         }
     }
 }

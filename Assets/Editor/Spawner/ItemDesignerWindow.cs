@@ -1,171 +1,251 @@
-﻿/*
- * ItemDesignerWindow.cs  (rev2)
- * Custom editor window for quickly authoring and testing ItemDefinition assets.
- * Drop this script into an Editor folder.
- */
-
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEditor.SceneManagement;
-using ItemSystem;
+using UnityEditorInternal;
 using System.IO;
+using System.Collections.Generic;
+using ItemSystem;
+using ItemSystem.Effects;
 
 namespace EditorTools
 {
+    /// <summary>
+    ///   Rev‑4: warns only on Spawn, fixes null‑effects, cleaner UX.
+    /// </summary>
     public class ItemDesignerWindow : EditorWindow
     {
-        private const string DefaultSaveFolder = "Assets/Data/Item"; // will be created if missing
+        private const string DefaultFolder = "Assets/Data/Items";
+        private const string GenericPrefabPath = "Prefabs/GenericItem"; // Resources path
+        private const string EffectFilter = "t:BaseEffectAsset";
 
-        [SerializeField] private ItemDefinition _workingCopy; // in‑memory ScriptableObject
+        [SerializeField] private ItemDefinition _draft;
         private SerializedObject _so;
-
-        // Generic prefab to use when spawning (change the path if you move the prefab)
+        private ReorderableList _effectsList;
+        private Vector2 _scroll;
         private GameObject _genericPrefab;
+        
 
-        [MenuItem("Tools/Item Designer %&i", priority = 100)] // Ctrl+Alt+I
-        public static void Open()
+        #region ✦ Entry
+        [MenuItem("Tools/Item Designer %#i", priority = 100)] // Ctrl+Shift+I
+        private static void Open()
         {
             var wnd = GetWindow<ItemDesignerWindow>();
             wnd.titleContent = new GUIContent("Item Designer");
-            wnd.minSize = new Vector2(380, 520);
+            wnd.minSize = new Vector2(420, 580);
         }
 
         private void OnEnable()
         {
-            // Load once; keep reference – Addressables users can switch to async call
-            _genericPrefab = Resources.Load<GameObject>("Prefabs/GenericItem");
+            _genericPrefab = Resources.Load<GameObject>(GenericPrefabPath);
+        }
+        #endregion
+
+        private void OnGUI()
+        {
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
+            DrawDefinitionBlock();
+            GUILayout.Space(10);
+            DrawToolbar();
+            EditorGUILayout.EndScrollView();
         }
 
-        /*────────────────────────────  GUI  ───────────────────────────*/
-        private void OnGUI()
+        /*──────────────────── Item Definition block ───────────────────*/
+        private void DrawDefinitionBlock()
         {
             EditorGUILayout.LabelField("Item Definition", EditorStyles.boldLabel);
             using (new EditorGUILayout.VerticalScope("box"))
             {
-                DrawOrCreateWorkingCopy();
-            }
-
-            GUILayout.Space(8);
-
-            EditorGUILayout.BeginHorizontal();
-            GUI.enabled = _workingCopy != null && !Application.isPlaying; // disable buttons in Play Mode
-
-            if (GUILayout.Button("Spawn in Scene", GUILayout.Height(30)))
-            {
-                // отложенный вызов, чтобы не ломать GUILayout при исключениях
-                EditorApplication.delayCall += Spawn;
-            }
-
-            if (GUILayout.Button("Save Asset", GUILayout.Height(30)))
-            {
-                EditorApplication.delayCall += SaveAsset;
-            }
-
-            GUI.enabled = true;
-            EditorGUILayout.EndHorizontal();
-
-            if (Application.isPlaying)
-                EditorGUILayout.HelpBox("Editor is in Play Mode — spawning and saving отключены.", MessageType.Info);
-        }
-
-        /*─────────────────  рабочая копия Definition  ─────────────────*/
-        private void DrawOrCreateWorkingCopy()
-        {
-            if (_workingCopy == null)
-            {
-                EditorGUILayout.HelpBox("Click the button below to create a new ItemDefinition in memory.",
-                    MessageType.Info);
-                if (GUILayout.Button("Create New ItemDefinition"))
+                if (_draft == null)
                 {
-                    _workingCopy = CreateInstance<ItemDefinition>();
-                    _so = new SerializedObject(_workingCopy);
+                    if (GUILayout.Button("Create New Item"))
+                    {
+                        _draft = CreateInstance<ItemDefinition>();
+                        _so = new SerializedObject(_draft);
+                        SetupEffectsList();
+                    }
+                    return;
                 }
 
-                return;
-            }
+                _so.Update();
 
-            _so.Update();
-            SerializedProperty prop = _so.GetIterator();
-            bool enterChildren = true;
-            while (prop.NextVisible(enterChildren))
-            {
-                if (prop.name == "m_Script") continue; // hide script field
-                EditorGUILayout.PropertyField(prop, true);
-                enterChildren = false;
-            }
+                DrawProperty("displayName", "Display Name *");
+                DrawProperty("description");
+                DrawProperty("icon");
+                DrawProperty("itemTag", "Item Tag");
+                DrawProperty("slotType", "Slot Type");
+                DrawEffectsReorderable();
+                DrawProperty("overridePrefab");
 
-            _so.ApplyModifiedProperties();
+                _so.ApplyModifiedProperties();
+            }
         }
 
-        /*───────────────────  действия кнопок  ───────────────────────*/
+        private void DrawProperty(string prop, string label = null)
+        {
+            var sp = _so.FindProperty(prop);
+            if (sp != null)
+                EditorGUILayout.PropertyField(sp, new GUIContent(label ?? ObjectNames.NicifyVariableName(prop)), true);
+        }
+
+        /*──────────────────── Effects list ───────────────────*/
+        private void SetupEffectsList()
+        {
+            var listProp = _so.FindProperty("effects");
+            _effectsList = new ReorderableList(_so, listProp, true, true, true, true);
+
+            _effectsList.drawHeaderCallback = rect => GUI.Label(rect, "Effects");
+            _effectsList.drawElementCallback = (rect, index, _, _) =>
+            {
+                var element = listProp.GetArrayElementAtIndex(index);
+                EditorGUI.PropertyField(rect, element, GUIContent.none);
+            };
+            _effectsList.onAddDropdownCallback = (rect, list) => ShowEffectDropdown(listProp);
+        }
+
+        private void ShowEffectDropdown(SerializedProperty listProp)
+        {
+            var menu = new GenericMenu();
+            foreach (var ea in FindAllEffectAssets())
+            {
+                menu.AddItem(new GUIContent(ea.name), false, obj =>
+                {
+                    listProp.arraySize++;
+                    var el = listProp.GetArrayElementAtIndex(listProp.arraySize - 1);
+                    el.objectReferenceValue = obj as BaseEffectAsset;
+                    _so.ApplyModifiedProperties();
+                }, ea);
+            }
+            menu.ShowAsContext();
+        }
+
+        private static IEnumerable<BaseEffectAsset> FindAllEffectAssets()
+        {
+            var guids = AssetDatabase.FindAssets(EffectFilter);
+            foreach (var g in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(g);
+                var ea = AssetDatabase.LoadAssetAtPath<BaseEffectAsset>(path);
+                if (ea != null) yield return ea;
+            }
+        }
+
+        private void DrawEffectsReorderable()
+        {
+            _effectsList ??= SetupAndReturn();
+            _effectsList.DoLayoutList();
+
+            ReorderableList SetupAndReturn()
+            {
+                SetupEffectsList();
+                return _effectsList;
+            }
+        }
+
+        /*──────────────────── Toolbar ───────────────────*/
+        private void DrawToolbar()
+        {
+            if (_draft == null) return;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUI.enabled = !Application.isPlaying; // disable in Play Mode
+
+                if (GUILayout.Button("Spawn", GUILayout.Height(28)))
+                    EditorApplication.delayCall += Spawn;
+
+                if (GUILayout.Button("Save Asset", GUILayout.Height(28)))
+                    EditorApplication.delayCall += SaveAsset;
+
+                if (GUILayout.Button("Duplicate", GUILayout.Height(28)))
+                    DuplicateDraft();
+
+                GUI.enabled = true;
+            }
+
+            if (Application.isPlaying)
+                EditorGUILayout.HelpBox("Play Mode: window is read‑only", MessageType.Info);
+        }
+
+        /*──────────────────── Actions ───────────────────*/
         private void Spawn()
         {
-            if (_workingCopy == null) return;
-            if (Application.isPlaying)
+            if (!Validate(out var msg))
             {
-                Debug.LogWarning("ItemDesigner: Cannot spawn while the Editor is in Play Mode. Exit play and retry.");
+                EditorUtility.DisplayDialog("Item Designer – cannot spawn", msg, "OK");
                 return;
             }
 
             var factory = new ItemFactory(_genericPrefab);
             Vector3 pos = SceneView.lastActiveSceneView ? SceneView.lastActiveSceneView.pivot : Vector3.zero;
-            factory.Spawn(_workingCopy, pos);
+            factory.Spawn(_draft, pos);
 
-            // Mark scene dirty only in Edit Mode; API запрещён в Play Mode
             if (!Application.isPlaying)
                 EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         }
 
         private void SaveAsset()
         {
-            if (_workingCopy == null) return;
-            if (Application.isPlaying)
-            {
-                Debug.LogWarning("ItemDesigner: Cannot save asset while in Play Mode. Exit play and retry.");
-                return;
-            }
+            if (_draft == null) return;
+            EnsureFolderExists(DefaultFolder);
 
-            EnsureFolderExists(DefaultSaveFolder);
+            string fileName = MakeFileNameSafe(string.IsNullOrWhiteSpace(_draft.displayName)
+                ? "NewItemDefinition" : _draft.displayName);
+            string path = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(DefaultFolder, fileName + ".asset"));
 
-            string fileName = string.IsNullOrWhiteSpace(_workingCopy.displayName)
-                ? "NewItemDefinition"
-                : MakeFileNameSafe(_workingCopy.displayName);
-            string path = Path.Combine(DefaultSaveFolder, fileName + ".asset");
-            path = AssetDatabase.GenerateUniqueAssetPath(path);
-
-            AssetDatabase.CreateAsset(_workingCopy, path);
+            AssetDatabase.CreateAsset(_draft, path);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             EditorUtility.FocusProjectWindow();
-            Selection.activeObject = _workingCopy;
-
-            _workingCopy = null;
+            Selection.activeObject = _draft;
+            _draft = null;
             _so = null;
+            _effectsList = null;
         }
 
-        /*────────────────────── helpers ──────────────────────────────*/
-        private static void EnsureFolderExists(string folderPath)
+        private void DuplicateDraft()
         {
-            if (AssetDatabase.IsValidFolder(folderPath)) return;
+            var clone = Instantiate(_draft);
+            clone.name = _draft.name + "_Copy";
+            _draft = clone;
+            _so = new SerializedObject(_draft);
+            SetupEffectsList();
+        }
 
-            string[] parts = folderPath.Split('/');
-            string current = parts[0]; // "Assets"
+        /*──────────────────── Validation ───────────────────*/
+        private bool Validate(out string message)
+        {
+            var sb = new System.Text.StringBuilder();
+            if (string.IsNullOrWhiteSpace(_draft.displayName))
+                sb.AppendLine("• Display Name is empty");
+            if (_draft.icon == null)
+                sb.AppendLine("• Icon not set");
+            if (_draft.effects == null || _draft.effects.Count == 0)
+                sb.AppendLine("• Add at least one effect");
+
+            message = sb.ToString();
+            return message.Length == 0;
+        }
+
+        /*──────────────────── Helpers ───────────────────*/
+        private static void EnsureFolderExists(string folder)
+        {
+            if (AssetDatabase.IsValidFolder(folder)) return;
+            var parts = folder.Split('/');
+            string curr = parts[0];
             for (int i = 1; i < parts.Length; i++)
             {
-                string next = current + "/" + parts[i];
+                string next = curr + "/" + parts[i];
                 if (!AssetDatabase.IsValidFolder(next))
-                    AssetDatabase.CreateFolder(current, parts[i]);
-                current = next;
+                    AssetDatabase.CreateFolder(curr, parts[i]);
+                curr = next;
             }
         }
 
         private static string MakeFileNameSafe(string src)
         {
-            foreach (char c in Path.GetInvalidFileNameChars())
-                src = src.Replace(c, '_');
+            foreach (var c in Path.GetInvalidFileNameChars()) src = src.Replace(c, '_');
             return src.ToUpperInvariant();
         }
     }

@@ -10,7 +10,7 @@ namespace Services
     /// Пока реализован как Singleton-MonoBehaviour, позже
     /// легко вынести в DI-контейнер, сохранив публичный интерфейс.
     /// </summary>
-    public class ItemService : IItemService
+    public class ItemService : Service, IItemService
     {
         [Header("Generic prefab (fallback)")]
         [Tooltip("Если OverridePrefab в ItemDefinition = null, будет использован этот префаб")]
@@ -22,7 +22,7 @@ namespace Services
 
 
         public ItemService(IEntityFactory<ItemPresenter, ItemDefinition> factory,
-            EntityRegistry registry)
+            EntityRegistry registry) : base("ItemService")
         {
             _factory = factory;
             _registry = registry;

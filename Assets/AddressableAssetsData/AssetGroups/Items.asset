@@ -14,22 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Items
   m_GUID: 486a4290f81bfd4489330f729c45963e
-  m_SerializeEntries:
-  - m_GUID: 87f012c997097384c8066dbaaf931c2f
-    m_Address: FirstPerfume
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: b19cc3bfe9ce941459bd29c4b1b10aef
-    m_Address: Assets/Resources/Items/Item.prefab
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e806e0de00187d74a921c2c35a58143f
-    m_Address: Perfume
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 1d6b8df0fad24ec43a4e4969f137bb8a, type: 2}
   m_SchemaSet:

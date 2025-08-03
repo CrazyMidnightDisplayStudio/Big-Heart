@@ -16,7 +16,7 @@ namespace ItemSystem
         [Header("Gameplay")]
         public string itemTag;
         public SlotType slotType;
-        public List<EffectAsset> effects;
+        public List<BaseEffectAsset> effects;
 
         [Header("Prefab (optional)")]
         [Tooltip("Оставь пустым, если годится Generic-префаб")]

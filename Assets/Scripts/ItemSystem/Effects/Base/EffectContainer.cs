@@ -1,61 +1,84 @@
 ﻿using System;
 using System.Collections.Generic;
+using Events.Gameplay;
 using Services;
-using UnityEngine;
 
 namespace ItemSystem.Effects
 {
-    public sealed class EffectContainer : MonoBehaviour
+    public sealed class EffectContainer : IDisposable
     {
-        readonly List<IEffect> _effects = new();
-        readonly List<uint>  _periodicCoroutineIds = new();
-        
-        // ItemMonoEntity _owner;
-        //
-        // public void Init(ItemMonoEntity owner, IEnumerable<EffectAsset> assets)
-        // {
-        //     _owner = owner;
-        //
-        //     foreach (var asset in assets)
-        //     {
-        //         if (!asset) continue;
-        //
-        //         var runtime = asset.BuildRuntime(owner);
-        //         _effects.Add(runtime);
-        //
-        //         if (runtime is IPeriodicEffect effect)
-        //         {
-        //             var stopCondition = new Func<bool>(() => owner == null || !owner.gameObject);
-        //             
-        //             _periodicCoroutineIds.Add(CoroutineService.Instance.RunRepeatingCoroutine(() => effect.Tick(), effect.IntervalSec, stopCondition));
-        //         }
-        //     }
-        // }
-        
-        /* Проксируем хуки */
-        public void OnEquip()
+        private readonly List<IEffect> _effects = new();
+        private readonly List<uint> _periodicCoroutineIds = new();
+        private readonly IDisposable[] _subscriptions;
+
+        private readonly ICoroutineService _coroutineService;
+
+        public EffectContainer(IEnumerable<IEffect> effects)
         {
-            foreach (var e in _effects) e.OnEquip();
+            var eventService = ServiceRegistry.Resolve<IEventService>();
+            if (eventService == null)
+            {
+                throw new ArgumentNullException(nameof(eventService));
+            }
+
+            _coroutineService = ServiceRegistry.Resolve<ICoroutineService>();
+            if (_coroutineService == null)
+            {
+                throw new ArgumentNullException(nameof(_coroutineService));
+            }
+
+            _effects.AddRange(effects);
+
+            _subscriptions = new IDisposable[]
+            {
+                eventService.Subscribe<DateStartedEvent>(_ =>
+                {
+                    foreach (var effect in _effects)
+                    {
+                        if (effect is IOnDateStart onDateStartEffect)
+                        {
+                            onDateStartEffect.OnDateStart();
+                        }
+                    }
+                    StartPeriodicEffects();
+                }),
+                eventService.Subscribe<DateEndedEvent>(_ =>
+                {
+                    foreach (var effect in _effects)
+                    {
+                        if (effect is IOnDateEnd onDateEndEffect)
+                        {
+                            onDateEndEffect.OnDateEnd();
+                        }
+                    }
+                    StopPeriodicEffects();
+                }),
+            };
         }
-        
-        public void OnUnEquip()
+
+        public void Dispose()
         {
-            foreach (var e in _effects) e.OnUnEquip();
+            foreach (var e in _subscriptions) e.Dispose();
+            StopPeriodicEffects();
         }
-        
-        public void OnDateStart()
+
+        private void StartPeriodicEffects()
         {
-            foreach (var e in _effects) e.OnDateStart();
+            foreach (var e in _effects)
+            {
+                if (e is IPeriodicEffect periodicEffect)
+                {
+                    var id = _coroutineService.RunRepeatingCoroutine(periodicEffect.Tick, periodicEffect.IntervalSec,
+                        periodicEffect.DurationSec);
+                    _periodicCoroutineIds.Add(id);
+                }
+            }
         }
-        
-        public void OnDateEnd()
+
+        private void StopPeriodicEffects()
         {
-            foreach (var e in _effects) e.OnDateEnd();
-        }
-        
-        void OnDestroy()
-        {
-            CoroutineService.Instance.Stop(_periodicCoroutineIds);
+            _coroutineService.Stop(_periodicCoroutineIds);
+            _periodicCoroutineIds.Clear();
         }
     }
 }

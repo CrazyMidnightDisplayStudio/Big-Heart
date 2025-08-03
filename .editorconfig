@@ -1,0 +1,7 @@
+﻿# сохраните однострочные лямбды и пустые блоки
+[*.cs]
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+
+# необязательно — до какого размера строки не ломать
+max_line_length = 120

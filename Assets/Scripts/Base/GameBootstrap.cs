@@ -1,7 +1,7 @@
-﻿using DI;
-using UnityEngine;
+﻿using UnityEngine;
 using ItemSystem;
 using Services;
+using Services.Inventory;
 
 namespace Base
 {
@@ -36,10 +36,21 @@ namespace Base
 
             var itemFactory = new ItemFactory(genericItemPrefab);
             var itemService = new ItemService(itemFactory, registry);
-
             ServiceRegistry.Register<IItemService>(itemService);
+            
+            var coroutineService = new CoroutineService();
+            ServiceRegistry.Register<ICoroutineService>(coroutineService);
+            
+            var eventService = new EventService();
+            ServiceRegistry.Register<IEventService>(eventService);
 
-            Debug.Log("<color=green>GameBootstrap: services registered</color>");
+            var inventoryService = new InventoryService();
+            ServiceRegistry.Register<IInventoryService>(inventoryService);
+            
+            var dateProgressService = new DateProgressService(eventService);
+            ServiceRegistry.Register<IDateProgressService>(dateProgressService);
+
+            Debug.Log("<color=green>GameBootstrap: All services registered</color>");
         }
 
         /*──────────────────── Проверка «забыли-ли мы Bootstrap» ─────────────*/

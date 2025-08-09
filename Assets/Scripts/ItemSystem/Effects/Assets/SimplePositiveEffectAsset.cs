@@ -12,13 +12,29 @@ namespace ItemSystem.Effects.Assets
 
         IDateProgressService _progress;
 
-        void OnEnable() =>
-            _progress = ServiceRegistry.Resolve<IDateProgressService>();
-
         public float IntervalSec => interval;
         public float DurationSec => duration;
 
-        public void Tick() => _progress.AddPositive(value);
+        private bool EnsureService()
+        {
+            if (_progress != null)
+            {
+                return true;
+            }
+            // В Play Mode сервис обязан быть; в Editor – просто молчим.
+            if (!Application.isPlaying)
+            {
+                return false;
+            }
+            _progress = Services.ServiceRegistry.Resolve<IDateProgressService>();
+            return _progress != null;
+        }
+
+        public void Tick()
+        {
+            EnsureService();
+            _progress.AddPositive(value);
+        }
 
         public override IEffect BuildRuntime(ItemModel owner)
         {

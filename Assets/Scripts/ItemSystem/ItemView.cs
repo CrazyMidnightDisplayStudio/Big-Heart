@@ -8,26 +8,16 @@ namespace ItemSystem
     [RequireComponent(typeof(SpriteRenderer))]
     public class ItemView : MonoBehaviour, IViewBinder<ItemDefinition>
     {
-        [SerializeField] private SpriteRenderer spriteRenderer;
-
         private string _title;
         private string _description;
 
-
         public void Bind(ItemDefinition def)
         {
-            // подстраховка
-            if (spriteRenderer == null)
-            {
-                spriteRenderer = GetComponent<SpriteRenderer>();
-            }
-
-            if (spriteRenderer == null)
+            if (!TryGetComponent<SpriteRenderer>(out var spriteRenderer))
             {
                 Debug.LogError($"{name}: ItemView requires a SpriteRenderer");
-                return; // выходим, чтобы не ловить NRE
+                return;
             }
-
             spriteRenderer.sprite = def.icon;
             _title = def.displayName;
             _description = def.description;

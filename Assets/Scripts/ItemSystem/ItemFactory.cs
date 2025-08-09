@@ -1,6 +1,4 @@
-﻿// ItemFactory.cs
-
-using UnityEngine;
+﻿using UnityEngine;
 using Base;
 
 namespace ItemSystem
@@ -14,12 +12,15 @@ namespace ItemSystem
 
         public ItemPresenter Spawn(ItemDefinition def, Vector3 pos, Transform parent = null)
         {
-            if (def == null) throw new System.ArgumentNullException(nameof(def));
+            if (def == null)
+            {
+                throw new System.ArgumentNullException(nameof(def));
+            }
 
             GameObject prefab = def.overridePrefab ?? _genericPrefab;
             GameObject go = prefab != null
                 ? Object.Instantiate(prefab, pos, Quaternion.identity, parent)
-                : new GameObject($"Item_{def.name}", typeof(SpriteRenderer));
+                : new GameObject($"Item_{(string.IsNullOrWhiteSpace(def.displayName) ? def.name : def.displayName)}", typeof(SpriteRenderer));
 
             var presenter = go.GetComponent<ItemPresenter>() ?? go.AddComponent<ItemPresenter>();
             presenter.Init(def);

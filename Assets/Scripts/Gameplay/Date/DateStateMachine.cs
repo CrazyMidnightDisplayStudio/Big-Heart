@@ -1,6 +1,7 @@
 ﻿using System;
 using Events.Gameplay;
 using Services;
+using UnityEngine;
 
 namespace Gameplay
 {
@@ -11,7 +12,7 @@ namespace Gameplay
 
         private readonly IEventService _eventService;
         private readonly ICoroutineService _coroutineService;
-        
+
         private readonly IDisposable _subStart;
 
         public DateStateMachine()
@@ -32,21 +33,25 @@ namespace Gameplay
 
         public void StartDate()
         {
+            Debug.Log("Date started");
             ChangeTo(_running);
         }
 
         private void Pause()
         {
+            Debug.Log("Date paused");
             _eventService.Publish(new DatePausedEvent());
         }
 
         private void Resume()
         {
+            Debug.Log("Date resumed");
             _eventService.Publish(new DateResumedEvent());
         }
 
         private void End()
         {
+            Debug.Log("Date ended");
             _eventService.Publish(new DateEndedEvent());
         }
 

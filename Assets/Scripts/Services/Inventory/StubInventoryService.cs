@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using ItemSystem;
+using Entities.Item.Presenter;
 namespace Services.Inventory
 {
     public class StubInventoryService : IInventoryService

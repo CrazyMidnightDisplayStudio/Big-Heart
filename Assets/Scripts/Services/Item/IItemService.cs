@@ -1,5 +1,6 @@
 ﻿using System;
-using ItemSystem;
+using Entities.Item.Model;
+using Entities.Item.Presenter;
 using UnityEngine;
 
 namespace Services

@@ -1,4 +1,5 @@
 ﻿using System;
+using CMD.Services;
 using Events.Gameplay;
 using Services;
 using UnityEngine;
@@ -10,13 +11,13 @@ namespace UI
     public class StartDateButton : MonoBehaviour
     {
         private Button _button;
-        private IEventService _eventService;
+        private IEventBusService _eventService;
 
         void Awake()
         {
             _button       = GetComponent<Button>();
             _button.interactable = true;
-            _eventService = ServiceRegistry.Resolve<IEventService>();
+            _eventService = ServiceRegistry.Resolve<IEventBusService>();
 
             _button.onClick.AddListener(OnClick);
         }

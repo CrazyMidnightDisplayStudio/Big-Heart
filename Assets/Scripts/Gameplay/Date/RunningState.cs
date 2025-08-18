@@ -1,6 +1,6 @@
-﻿using Events.Gameplay;
+﻿using CMD.Services;
+using Events.Gameplay;
 using Services;
-using Services.Inventory;
 using UnityEngine;
 
 namespace Gameplay
@@ -8,7 +8,7 @@ namespace Gameplay
     public class RunningState : IDateState
     {
         private readonly ICoroutineService _coroutineService;
-        private readonly IEventService _eventService;
+        private readonly IEventBusService _eventService;
         private readonly IDateProgressService _dateProgressService;
 
         private const float NegativePerSec = 1.0f; // TODO: from config
@@ -18,7 +18,7 @@ namespace Gameplay
         public RunningState()
         {
             _coroutineService = ServiceRegistry.Resolve<ICoroutineService>();
-            _eventService = ServiceRegistry.Resolve<IEventService>();
+            _eventService = ServiceRegistry.Resolve<IEventBusService>();
             _dateProgressService = ServiceRegistry.Resolve<IDateProgressService>();
         }
 

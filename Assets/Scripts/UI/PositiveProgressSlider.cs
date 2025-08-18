@@ -1,4 +1,5 @@
 ﻿using System;
+using CMD.Services;
 using Events.UI;
 using Services;
 using UnityEngine;
@@ -11,13 +12,13 @@ namespace UI
     {
         private Slider _slider;
         private IDisposable _subscription;
-        private IEventService _eventService;
+        private IEventBusService _eventService;
 
         private void Awake()
         {
             _slider = GetComponent<Slider>();
             _slider.value = 0;
-            _eventService = ServiceRegistry.Resolve<IEventService>();
+            _eventService = ServiceRegistry.Resolve<IEventBusService>();
         }
 
         private void OnEnable()

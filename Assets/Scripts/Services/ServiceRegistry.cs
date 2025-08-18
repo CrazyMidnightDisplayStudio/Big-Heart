@@ -26,13 +26,13 @@ namespace Services
                 return cast;
             }
 
-#if UNITY_EDITOR
-            // В редакторе, пока ИГРА НЕ запущена – отдаём безопасные стабы.
-            if (!Application.isPlaying && EditorStubs.TryGetStub(typeof(T), out object stub))
-            {
-                return (T)stub;
-            }
-#endif
+// #if UNITY_EDITOR
+//             // В редакторе, пока ИГРА НЕ запущена – отдаём безопасные стабы.
+//             if (!Application.isPlaying && EditorStubs.TryGetStub(typeof(T), out object stub))
+//             {
+//                 return (T)stub;
+//             }
+// #endif
 
             throw new Exception($"Service {typeof(T).Name} not found");
         }

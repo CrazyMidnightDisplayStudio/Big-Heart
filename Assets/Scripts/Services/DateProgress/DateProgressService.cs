@@ -1,6 +1,6 @@
-﻿using Events.Gameplay;
+﻿using CMD.Services;
+using Events.Gameplay;
 using Events.UI;
-using UI;
 using UnityEngine;
 
 namespace Services
@@ -13,9 +13,9 @@ namespace Services
         private const float NegativeLimit = 100f;
         private const float PositiveLimit = 100f;
 
-        private readonly IEventService _eventService;
+        private readonly IEventBusService _eventService;
 
-        public DateProgressService(IEventService eventService) : base("DateProgressService")
+        public DateProgressService(IEventBusService eventService) : base("DateProgressService")
         {
             _eventService = eventService;
         }

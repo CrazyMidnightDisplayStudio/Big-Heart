@@ -1,18 +1,17 @@
-﻿using Events.Gameplay;
+﻿using CMD.Services;
 using Services;
-using UnityEngine;
 
 namespace Gameplay
 {
     public class WaitingState : IDateState
     {
-        private readonly IEventService _eventService;
+        private readonly IEventBusService _eventService;
 
         public WaitingState()
         {
-            _eventService = ServiceRegistry.Resolve<IEventService>();
+            _eventService = ServiceRegistry.Resolve<IEventBusService>();
         }
-        
+
         public void Enter()
         {
             // TODO: показать - нажми старт

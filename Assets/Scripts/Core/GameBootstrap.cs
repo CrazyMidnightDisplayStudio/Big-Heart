@@ -1,7 +1,4 @@
-﻿using Entities.Item.Factory;
-using UnityEngine;
-using Services;
-using Services.Inventory;
+﻿using UnityEngine;
 
 namespace Core
 {
@@ -29,21 +26,21 @@ namespace Core
             DontDestroyOnLoad(gameObject); // живём между сценами
 
             /* ─── Сборка зависимостей ─── */
-            var coroutineService = new CoroutineService();
-            ServiceRegistry.Register<ICoroutineService>(coroutineService);
-
-            var eventService = new EventService();
-            ServiceRegistry.Register<IEventService>(eventService);
-
-            var itemFactory = new ItemFactory(eventService, coroutineService);
-            var itemService = new DebugItemSpawnerService(itemFactory);
-            ServiceRegistry.Register<IItemService>(itemService);
-
-            var inventoryService = new InventoryService();
-            ServiceRegistry.Register<IInventoryService>(inventoryService);
-
-            var dateProgressService = new DateProgressService(eventService);
-            ServiceRegistry.Register<IDateProgressService>(dateProgressService);
+            // var coroutineService = new CoroutineService();
+            // ServiceRegistry.Register<ICoroutineService>(coroutineService);
+            //
+            // var eventService = new EventService();
+            // ServiceRegistry.Register<IEventBusService>(eventService);
+            //
+            // var itemFactory = new ItemFactory(eventService, coroutineService);
+            // var itemService = new DebugItemSpawnerService(itemFactory);
+            // ServiceRegistry.Register<IItemService>(itemService);
+            //
+            // var inventoryService = new InventoryService();
+            // ServiceRegistry.Register<IInventoryService>(inventoryService);
+            //
+            // var dateProgressService = new DateProgressService(eventService);
+            // ServiceRegistry.Register<IDateProgressService>(dateProgressService);
 
             Debug.Log("<color=green>GameBootstrap: All services registered</color>");
         }

@@ -5,7 +5,7 @@ namespace CMD.Entities
 {
     public abstract class EffectSO : ScriptableObject
     {
-        public abstract IEffectRuntime CreateRuntime(BaseEntityRuntime host, IGameContext ctx);
+        public abstract IEffectRuntime CreateRuntime(BaseEntityRuntime host);
     }
 
     public interface IEffectRuntime

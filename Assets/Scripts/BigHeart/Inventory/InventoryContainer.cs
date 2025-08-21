@@ -20,9 +20,15 @@ namespace BigHeart
         public string ContainerKey => definition ? definition.containerKey : throw new InvalidOperationException();
         public int Capacity => (definition ? definition.rows * definition.cols : 0);
 
-        private void Awake() => EnsureCapacity();
-        private void OnEnable() => GameContextLocator.Current?.ContainmentService?.Register(this);
-        private void OnDisable() => GameContextLocator.Current?.ContainmentService?.Unregister(this);
+        private IContainmentService containmentService;
+
+        private void Awake()
+        {
+            EnsureCapacity();
+            containmentService = ServiceRegistry.Get<IContainmentService>();
+        }
+        private void OnEnable() => containmentService?.Register(this);
+        private void OnDisable() => containmentService?.Unregister(this);
 
         private void EnsureCapacity()
         {
@@ -46,7 +52,7 @@ namespace BigHeart
             _items[index] = e;
             AttachView(e, index);
             // событие для триггеров/систем UI
-            (GameContextLocator.Current?.ContainmentService as ContainmentService)?.OnAdded(e, this, index);
+            (containmentService as ContainmentService)?.OnAdded(e, this, index);
             return true;
         }
 
@@ -56,7 +62,7 @@ namespace BigHeart
             var i = _items.IndexOf(e);
             if (i < 0) return false;
             _items[i] = null;
-            (GameContextLocator.Current?.ContainmentService as ContainmentService)?.OnRemoved(e, this);
+            (containmentService as ContainmentService)?.OnRemoved(e, this);
             return true;
         }
 
@@ -70,7 +76,7 @@ namespace BigHeart
             _items[i] = null;
             _items[newIndex] = e;
             AttachView(e, newIndex);
-            (GameContextLocator.Current?.ContainmentService as ContainmentService)?.OnMoved(e, this, IndexOf(e));
+            (containmentService as ContainmentService)?.OnMoved(e, this, IndexOf(e));
             return true;
         }
 

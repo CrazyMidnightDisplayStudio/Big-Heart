@@ -5,7 +5,7 @@ namespace CMD.Entities
 {
     public abstract class TriggerSO : ScriptableObject
     {
-        public abstract ITriggerRuntime CreateRuntime(BaseEntityRuntime host, IGameContext ctx);
+        public abstract ITriggerRuntime CreateRuntime(BaseEntityRuntime host);
     }
 
     public interface ITriggerRuntime

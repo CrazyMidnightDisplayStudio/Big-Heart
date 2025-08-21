@@ -1,7 +1,6 @@
-﻿using System;
+﻿using CMD.Core;
 using CMD.Services;
 using Events.Gameplay;
-using Services;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,7 +16,7 @@ namespace UI
         {
             _button       = GetComponent<Button>();
             _button.interactable = true;
-            _eventService = ServiceRegistry.Resolve<IEventBusService>();
+            _eventService = ServiceRegistry.Get<IEventBusService>();
 
             _button.onClick.AddListener(OnClick);
         }

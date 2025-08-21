@@ -1,193 +1,89 @@
-﻿using System.Collections.Generic;
-using CMD.Core;
+﻿using CMD.Core;
+using CMD.Services.Save;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace CMD.Entities
 {
     /// <summary>
-    /// Базовый класс геймплейной сущьности, теоретически может быть чем угодно.
-    /// Создается из описания предмета - definition
-    /// Геймплейная логика создается отдельно и хранится списком GameplayRuleSO внутри definition
+    /// Тонкая база: состояние, ссылка на definition, сейв/лоад.
+    /// НИКАКОГО UI/префабов/иконок здесь нет.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(StableId))]
     public abstract class BaseEntityRuntime : MonoBehaviour
     {
-        [SerializeField] private EntityRuntimeState state = new(); // Состояние объекта (может быть не изменяемым, это нормально)
-        [SerializeField] private EntityDefinitionSO definition; // ScriptableObject - описание сущьности, так же содержит геймплейную логику GameplayRuleSO
-        [SerializeField] private bool destroyOnRemoveFromGame = true; // нужно ли уничтожать MB при вызове RemoveFromGame
+        [SerializeField] private EntityRuntimeState state = new(); // runtime-состояние
+        [SerializeField] private EntityDefinitionSO definition; // описание/правила
+        [SerializeField] private bool destroyOnRemoveFromGame = true;
 
-        public EntityRuntimeState State => state;
         public EntityDefinitionSO Definition => definition;
+        public EntityRuntimeState State => state;
         public string EntityId => _stableId.IdString;
         public bool IsRetired { get; private set; }
 
         private StableId _stableId;
-        private IGameContext _ctx;
-        private readonly List<ITriggerRuntime> _installed = new();
 
-        private bool _initialized = false;
-        private bool _installedReactions = false;
+        protected virtual void Awake()
+        {
+            _stableId = GetComponent<StableId>() ?? gameObject.AddComponent<StableId>();
+        }
 
-        private bool ReadyToRun => _initialized && isActiveAndEnabled;
-
-        /// <summary>
-        /// Инициализация - вызови сразу после спавна из фабрики!
-        /// </summary>
-        /// <param name="def">Описание сущьности</param>
-        /// <param name="ctx">Контекст игры содержит нужные зависимости</param>
-        /// <param name="preload">Состояние объекта из сейва</param>
-        public void Init(EntityDefinitionSO def, IGameContext ctx, EntitySaveData preload = null)
+        /// <summary>Инициализация из фабрики/бутстрапа.</summary>
+        public void Init(EntityDefinitionSO def)
         {
             definition = def;
-            _ctx = ctx;
-            _initialized = true;
+        }
 
-            if (preload != null)
+        public virtual EntitySaveData CaptureData()
+        {
+            return new EntitySaveData
             {
-                if (System.Guid.TryParse(preload.entityId, out var g))
+                entityId = EntityId,
+                definitionKey = definition ? definition.Key : string.Empty,
+                retired = IsRetired,
+                stateJson = state != null ? JsonUtility.ToJson(state) : string.Empty,
+                location = new EntityLocation
                 {
-                    _stableId.SetFromSave(g);
+                    kind = EEntityLocationKind.world,
+                    scene = SceneManager.GetActiveScene().name,
+                    position = transform.position,
+                    rotation = transform.rotation
                 }
-                Restore(preload); // позиция/rotation/consumed
-            }
+            };
+        }
 
-            if (isActiveAndEnabled)
+        public virtual void Restore(EntitySaveData data)
+        {
+            if (data == null) return;
+
+            IsRetired = data.retired;
+
+            if (!string.IsNullOrEmpty(data.stateJson) && state != null)
             {
-                InstallGameplayRules();
+                try { JsonUtility.FromJsonOverwrite(data.stateJson, state); } catch { /* ignore */ }
             }
+
+            if (data.location != null && data.location.kind == EEntityLocationKind.world)
+                transform.SetPositionAndRotation(data.location.position, data.location.rotation);
+
+            gameObject.SetActive(!IsRetired);
         }
 
-        private void Awake()
+        /// <summary>Зафиксировать состояние в репозиторий через контекст.</summary>
+        public void Capture()
         {
-            _stableId = GetComponent<StableId>();
-            _ctx ??= GameContextLocator.Current;
+            var saves = ServiceRegistry.Get<ISaveRepository>();
+            saves.Upsert(CaptureData());
         }
 
-        private void Start()
-        {
-            if (!_initialized)
-            {
-                Debug.LogError($"[{name}] EntityRuntime has not been initialized via Init(...). " +
-                    "Make sure you create it using the factory or call Init() yourself.");
-            }
-        }
-
-        private void OnEnable()
-        {
-            if (ReadyToRun)
-            {
-                InstallGameplayRules();
-            }
-        }
-        private void OnDisable() => UninstallGameplayRules();
-
-        protected virtual void InstallGameplayRules()
-        {
-            if (_installedReactions || definition == null || IsRetired) return;
-            _installedReactions = true;
-
-            foreach (var rule in definition.gameplayRules)
-            {
-                if (rule?.trigger == null || rule.effects == null || rule.effects.Count == 0)
-                {
-                    continue;
-                }
-
-                var trig = rule.trigger.CreateRuntime(this, _ctx);
-                var localEffects = new List<IEffectRuntime>(rule.effects.Count);
-                foreach (var fx in rule.effects)
-                {
-                    localEffects.Add(fx.CreateRuntime(this, _ctx));
-                }
-
-                trig.Fired += () =>
-                {
-                    foreach (var e in localEffects)
-                    {
-                        e.Execute();
-                    }
-                };
-
-                trig.Install();
-                _installed.Add(trig);
-            }
-        }
-
-        protected virtual void UninstallGameplayRules()
-        {
-            foreach (var t in _installed) t.Uninstall();
-            _installed.Clear();
-            _installedReactions = false;
-        }
-
-        /// <summary>
-        /// Выводит сущьность из игры
-        /// </summary>
+        /// <summary>Убрать из игры (возможное уничтожение объекта).</summary>
         public virtual void RemoveFromGame()
         {
-            if (IsRetired) return;
             IsRetired = true;
-            Capture(); // Фиксируем текущее состояние в памяти, но не выполняем Flush(само сохранение в файл)
-            UninstallGameplayRules(); // Убирает геймплейные правила и эффекты
+            Capture();
             if (destroyOnRemoveFromGame) Destroy(gameObject);
             else gameObject.SetActive(false);
         }
-
-        /// <summary>
-        /// Создаем данные для сохранения и копируем сериализуемые поля из рантайм объекта.
-        /// Только для мировых сущьностей
-        /// </summary>
-        /// <returns>Объект сохранения</returns>
-        public virtual EntitySaveData CaptureData() => new EntitySaveData
-        {
-            definitionKey = definition?.Key,
-            entityId = EntityId,
-            retired = IsRetired,
-            location = new EntityLocation
-            {
-                kind = EEntityLocationKind.world,
-                scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
-                position = transform.position,
-                rotation = transform.rotation,
-            },
-            stateJson = JsonUtility.ToJson(State)
-        };
-
-        public virtual void Restore(EntitySaveData entitySaveData)
-        {
-            if (entitySaveData == null || entitySaveData.entityId != EntityId)
-            {
-                return;
-            }
-
-            if (!IsRetired && entitySaveData.retired)
-            {
-                IsRetired = true; // на случай пост-факта
-            }
-
-            transform.position = entitySaveData.location.position;
-            transform.rotation = entitySaveData.location.rotation;
-
-            if (!string.IsNullOrEmpty(entitySaveData.stateJson))
-                JsonUtility.FromJsonOverwrite(entitySaveData.stateJson, state);
-
-            if (IsRetired)
-            {
-                if (destroyOnRemoveFromGame)
-                {
-                    Destroy(gameObject);
-                }
-                else
-                {
-                    gameObject.SetActive(false);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Зафиксировать текущее состояние объекта в сейве in-memory
-        /// </summary>
-        public void Capture() => _ctx.Saves.Upsert(CaptureData());
     }
 }

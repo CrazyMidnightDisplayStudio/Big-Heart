@@ -1,7 +1,7 @@
 ﻿using System;
+using CMD.Core;
 using CMD.Services;
 using Events.UI;
-using Services;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,7 +18,7 @@ namespace UI
         {
             _slider = GetComponent<Slider>();
             _slider.value = 0;
-            _eventService = ServiceRegistry.Resolve<IEventBusService>();
+            _eventService = ServiceRegistry.Get<IEventBusService>();
         }
 
         private void OnEnable()

@@ -8,7 +8,7 @@ using Object = UnityEngine.Object;
 
 namespace CMD.Services
 {
-    public sealed partial class EventService : Service, IEventBusService
+    public sealed partial class EventBusService : Service, IEventBusService
     {
         private readonly Dictionary<Type, List<Subscription>> _map = new();
         private readonly ConcurrentQueue<object> _threadQueue = new();
@@ -18,11 +18,11 @@ namespace CMD.Services
 
         private sealed class Runner : MonoBehaviour
         {
-            public EventService owner;
+            public EventBusService owner;
             void Update() => owner.Tick();
         }
 
-        public EventService() : base("EventService")
+        public EventBusService() : base("EventService")
         {
             _runner = new GameObject("[EventServiceRunner]");
             UnityEngine.Object.DontDestroyOnLoad(_runner);

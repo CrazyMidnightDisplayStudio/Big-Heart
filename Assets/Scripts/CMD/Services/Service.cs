@@ -13,11 +13,11 @@ namespace CMD.Services
             Debug.Log($"<color=green>{Name} ready</color>");
         }
 
-        public virtual void Init()
+        protected virtual void Init()
         {
         }
 
-        public virtual void Start()
+        protected virtual void Start()
         {
         }
 

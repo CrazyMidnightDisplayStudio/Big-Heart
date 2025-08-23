@@ -3,7 +3,7 @@ using BigHeart.Services;
 using UnityEngine;
 using CMD.Core;
 using CMD.Services;
-using CMD.Entities;
+using CMD.Base;
 
 namespace BigHeart
 {
@@ -26,22 +26,15 @@ namespace BigHeart
 
             // core services
             var saves = new JsonSaveRepository(Path.Combine(Application.persistentDataPath, "save.json"));
-            var eventsBus = new StubEventService();
-            var coroutines = new StubCoroutineService();
-            var containment = new ContainmentService("Containment");
-            var catalog = (IEntityCatalog)catalogAsset;
-            var factory = new PrefabEntityFactory();
 
             // register
-            ServiceRegistry.Register<IEntityCatalog>(catalog);
-            ServiceRegistry.Register<IEntityFactory>(factory);
+            ServiceRegistry.Register<ItemCatalogService>(new ItemCatalogService());
+            ServiceRegistry.Register<IEntityFactory<ItemRuntime, ItemDefinition>>(new ItemFactory());
             ServiceRegistry.Register<ISaveRepository>(saves);
-            ServiceRegistry.Register<IEventBusService>(eventsBus);
-            ServiceRegistry.Register<ICoroutineService>(coroutines);
-            ServiceRegistry.Register<IContainmentService>(containment);
-
-            // глобальное состояние игры — твоё
-            ServiceRegistry.Register(new GameContextService());
+            ServiceRegistry.Register<IEventBusService>(new EventBusService());
+            ServiceRegistry.Register<ICoroutineService>(new CoroutineService());
+            // ServiceRegistry.Register<IContainmentService>(new InventoryContainer());
+            ServiceRegistry.Register(new BrainService());
 
             Debug.Log("<color=green>Bootstrap: services registered</color>");
         }

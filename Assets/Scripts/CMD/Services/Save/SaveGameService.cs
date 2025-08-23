@@ -1,4 +1,4 @@
-﻿using CMD.Entities;
+﻿using CMD.Base;
 using UnityEngine;
 namespace CMD.Services.Save
 {

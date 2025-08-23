@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using CMD.Core;
-using CMD.Entities;
+using CMD.Base;
 using CMD.Services;
 using UnityEngine;
 

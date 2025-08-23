@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using CMD.Entities;
+using CMD.Base;
 using UnityEngine;
 
 namespace CMD.Services
@@ -9,7 +9,7 @@ namespace CMD.Services
         private readonly Dictionary<(string owner, string key), IEntityContainer> _containers = new();
         private readonly Dictionary<string, (IEntityContainer container, int index)> _indexes = new();
 
-        public ContainmentService(string name, ILogger logger = null) : base("ContainmentService") { }
+        public ContainmentService() : base("ContainmentService") { }
 
         public IEnumerable<IEntityContainer> AllContainers => _containers.Values;
         public bool TryGetContainerOf(BaseEntityRuntime e, out IEntityContainer container, out int index)

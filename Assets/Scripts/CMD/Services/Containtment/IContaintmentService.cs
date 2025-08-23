@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using CMD.Entities;
+using CMD.Base;
 
 namespace CMD.Services
 {

@@ -2,7 +2,7 @@
 
 namespace CMD.Services
 {
-    public sealed partial class EventService
+    public sealed partial class EventBusService
     {
         private abstract class Subscription : IDisposable
         {

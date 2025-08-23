@@ -30,7 +30,7 @@ namespace CMD.Services
             _runner.AddComponent<Runner>().owner = this;
         }
 
-        #region I_EVENT_SERVICE
+        #region interface Event Service
         public IDisposable Subscribe<T>(Action<T> h, Func<T, bool>? filter = null)
             where T : struct
         {
@@ -43,7 +43,7 @@ namespace CMD.Services
         {
             _threadQueue.Enqueue(evt);
         }
-        #endregion
+        #endregion interface Event Service
 
         private void Tick() // Runner->tick
         {
@@ -88,6 +88,7 @@ namespace CMD.Services
                 Debug.LogWarning($"Event {eventName} took {_sw.ElapsedMilliseconds} ms");
             }
         }
+        #endregion HELPERS
 
         public override void Dispose()
         {
@@ -98,6 +99,5 @@ namespace CMD.Services
 
             _map.Clear();
         }
-        #endregion
     }
 }

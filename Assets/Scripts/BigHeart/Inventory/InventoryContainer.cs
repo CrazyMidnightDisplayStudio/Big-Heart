@@ -1,117 +1,131 @@
 ﻿using System;
 using System.Collections.Generic;
-using CMD.Core;
-using CMD.Base;
-using CMD.Services;
+using CMD.Base; // BaseEntityRuntime, StableId
+using CMD.Core; // ServiceRegistry
+using CMD.Services; // IContainmentService, IEntityContainer
 using UnityEngine;
 
 namespace BigHeart
 {
+    /// <summary>
+    /// Универсальный контейнер: фиксированный массив слотов, 1 сущность на слот.
+    /// Никаких событий здесь нет — только «чистые» операции хранения.
+    /// </summary>
     [DisallowMultipleComponent]
     public sealed class InventoryContainer : MonoBehaviour, IEntityContainer
     {
-        [SerializeField] private string ownerId = "Player";
-        [SerializeField] private GridContainerDefinitionSO definition;
-        [SerializeField] private RectTransform slotsRoot; // куда ставить предметы в UI (может быть обычный Transform)
+        [Header("Owner & Identity")]
+        [SerializeField] private StableId owner; // чей контейнер (стабильный id)
+        [SerializeField] private string containerKey = "inventory";
 
-        private readonly List<BaseEntityRuntime> _items = new(); // индекс = слот
+        [Header("Capacity")]
+        [SerializeField, Min(1)] private int capacity = 16;
 
-        public string OwnerId => ownerId;
-        public string ContainerKey => definition ? definition.containerKey : throw new InvalidOperationException();
-        public int Capacity => (definition ? definition.rows * definition.cols : 0);
+        // Внутреннее хранилище (индекс == слот)
+        private readonly List<BaseEntityRuntime> _items = new();
 
-        private IContainmentService containmentService;
+        // Сервис нужен только для регистрации/анрегистрации
+        private IContainmentService _containment;
 
-        private void Awake()
+        /*──────────── IEntityContainer ───────────*/
+        public string OwnerId
         {
-            EnsureCapacity();
-            containmentService = ServiceRegistry.Get<IContainmentService>();
-        }
-        private void OnEnable() => containmentService?.Register(this);
-        private void OnDisable() => containmentService?.Unregister(this);
-
-        private void EnsureCapacity()
-        {
-            var need = Capacity;
-            while (_items.Count < need) _items.Add(null);
-            if (_items.Count > need) _items.RemoveRange(need, _items.Count - need);
+            get
+            {
+                if (!owner) throw new InvalidOperationException("InventoryContainer: StableId(owner) missing.");
+                return owner.IdString;
+            }
         }
 
-        // IEntityContainer
+        public string ContainerKey => containerKey;
+        public int Capacity => capacity;
+
         public bool Add(BaseEntityRuntime e, int index = -1, string slotKey = null)
         {
-            if (e == null) return false;
+            if (!e) return false;
             EnsureCapacity();
+
+            // не добавляем повторно
+            if (_items.IndexOf(e) >= 0) return false;
+
+            // выбрать первый свободный слот, если индекс не задан
             if (index < 0)
             {
                 index = _items.FindIndex(x => x == null);
                 if (index < 0) return false;
             }
-            if (index >= _items.Count || _items[index] != null) return false;
+
+            if (!InRange(index) || _items[index] != null) return false;
 
             _items[index] = e;
-            AttachView(e, index);
-            // событие для триггеров/систем UI
-            (containmentService as ContainmentService)?.OnAdded(e, this, index);
             return true;
         }
 
         public bool Remove(BaseEntityRuntime e)
         {
-            if (e == null) return false;
+            if (!e) return false;
+            EnsureCapacity();
+
             var i = _items.IndexOf(e);
             if (i < 0) return false;
+
             _items[i] = null;
-            (containmentService as ContainmentService)?.OnRemoved(e, this);
             return true;
         }
 
+        /// <summary>
+        /// Перенос в ПУСТОЙ слот (свапа нет — это упрощает инварианты).
+        /// </summary>
         public bool Move(BaseEntityRuntime e, int newIndex, string newSlotKey = null)
         {
-            var i = _items.IndexOf(e);
-            if (i < 0) return false;
-            if (newIndex < 0 || newIndex >= _items.Count) return false;
+            if (!e) return false;
+            EnsureCapacity();
+
+            var from = _items.IndexOf(e);
+            if (from < 0) return false;
+            if (!InRange(newIndex)) return false;
             if (_items[newIndex] != null) return false;
 
-            _items[i] = null;
+            _items[from] = null;
             _items[newIndex] = e;
-            AttachView(e, newIndex);
-            (containmentService as ContainmentService)?.OnMoved(e, this, IndexOf(e));
             return true;
         }
 
-        public bool Contains(BaseEntityRuntime e) => _items.IndexOf(e) >= 0;
-        public int IndexOf(BaseEntityRuntime e) => _items.IndexOf(e);
-        public BaseEntityRuntime IndexOfSlot(int index) => _items[index];
+        public bool Contains(BaseEntityRuntime e) => e && _items.IndexOf(e) >= 0;
+        public int IndexOf(BaseEntityRuntime e) => e ? _items.IndexOf(e) : -1;
 
-        // Визуальное позиционирование в UI/мире
-        void AttachView(BaseEntityRuntime e, int index)
+        public BaseEntityRuntime IndexOfSlot(int index)
         {
-            if (slotsRoot == null) return;
-            var t = e.transform as RectTransform ?? e.GetComponent<RectTransform>();
-            if (t == null) t = e.gameObject.AddComponent<RectTransform>();
-            t.SetParent(slotsRoot, worldPositionStays: false);
-
-            var (row, col) = IndexToRC(index);
-            var pos = RCToLocalPos(row, col);
-            t.anchoredPosition = pos;
-            t.localScale = Vector3.one;
+            EnsureCapacity();
+            return InRange(index) ? _items[index] : null;
         }
 
-        (int r, int c) IndexToRC(int index)
+        /*──────────── lifecycle ───────────*/
+        private void Awake()
         {
-            var cols = Mathf.Max(1, definition.cols);
-            return (index / cols, index % cols);
+            EnsureCapacity();
+            _containment = ServiceRegistry.Get<IContainmentService>();
         }
 
-        Vector2 RCToLocalPos(int r, int c)
+        private void OnEnable() => _containment?.Register(this);
+        private void OnDisable() => _containment?.Unregister(this);
+
+        private void OnValidate()
         {
-            var size = definition.cellSize;
-            var pad = definition.padding;
-            // простой левый-верхний грид:
-            var x = pad.x + c * size.x;
-            var y = -(pad.y + r * size.y);
-            return new Vector2(x, y);
+            if (capacity < 1) capacity = 1;
+            EnsureCapacity();
         }
+
+        /*──────────── helpers ───────────*/
+        private void EnsureCapacity()
+        {
+            while (_items.Count < capacity) _items.Add(null);
+            if (_items.Count > capacity) _items.RemoveRange(capacity, _items.Count - capacity);
+        }
+
+        private bool InRange(int i) => i >= 0 && i < capacity;
+
+        // (опционально) отладочный доступ
+        public IReadOnlyList<BaseEntityRuntime> Slots => _items;
     }
 }

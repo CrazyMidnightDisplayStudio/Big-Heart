@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace BigHeart
+namespace CMD.Base
 {
     /// <summary>Умеет отдавать префаб для спауна runtime-компонента.</summary>
     public interface IPrefabProvider

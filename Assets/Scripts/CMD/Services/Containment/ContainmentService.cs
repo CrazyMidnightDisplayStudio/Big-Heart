@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CMD.Base;
 using CMD.Core;
 using CMD.Events.ContainmentEvents;
+using CMD.SaveLoadSystem;
 
 namespace CMD.Services
 {
@@ -58,6 +59,15 @@ namespace CMD.Services
             CommitAdded(e, c, index >= 0 ? index : TryGetIndex(e, c), origin);
             return true;
         }
+
+        public bool TryPut(string ownerId, string containerKey, BaseEntityRuntime e,
+            int index = -1, string slotKey = null,
+            EChangeOrigin origin = EChangeOrigin.gameplay)
+            => Put(ownerId, containerKey, e, index, slotKey, origin);
+
+        public bool TryPut(BaseEntityRuntime e, ContainerData data,
+            EChangeOrigin origin = EChangeOrigin.gameplay)
+            => Put(data.ownerId, data.containerKey, e, data.index, null, origin);
 
         public bool TakeOut(string ownerId, string containerKey, BaseEntityRuntime e, EChangeOrigin origin = EChangeOrigin.gameplay)
         {

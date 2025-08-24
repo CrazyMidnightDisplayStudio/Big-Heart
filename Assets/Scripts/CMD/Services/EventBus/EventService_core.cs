@@ -8,26 +8,31 @@ using Object = UnityEngine.Object;
 
 namespace CMD.Services
 {
+
     public sealed partial class EventBusService : Service, IEventBusService
     {
         private readonly Dictionary<Type, List<Subscription>> _map = new();
         private readonly ConcurrentQueue<object> _threadQueue = new();
         private readonly Stopwatch _sw = new();
 
-        private GameObject _runner;
+        private Runner _runner;
 
         private sealed class Runner : MonoBehaviour
         {
-            public EventBusService owner;
-            void Update() => owner.Tick();
+            public EventBusService Bus;
+            void Update() => Bus?.UpdateMain();
         }
 
-        public EventBusService() : base("EventService")
+        public EventBusService() : base("EventBus") { }
+
+        protected override void Init()
         {
-            _runner = new GameObject("[EventServiceRunner]");
-            UnityEngine.Object.DontDestroyOnLoad(_runner);
-            _runner.hideFlags = HideFlags.HideInHierarchy;
-            _runner.AddComponent<Runner>().owner = this;
+            base.Init();
+
+            var go = new GameObject("[CMD] EventBusRunner");
+            Object.DontDestroyOnLoad(go);
+            _runner = go.AddComponent<Runner>();
+            _runner.Bus = this;
         }
 
         #region interface Event Service
@@ -45,7 +50,7 @@ namespace CMD.Services
         }
         #endregion interface Event Service
 
-        private void Tick() // Runner->tick
+        private void UpdateMain() // Runner->tick
         {
             while (_threadQueue.TryDequeue(out var raw))
             {
@@ -92,11 +97,7 @@ namespace CMD.Services
 
         public override void Dispose()
         {
-            if (_runner)
-            {
-                Object.Destroy(_runner);
-            }
-
+            if (_runner) Object.Destroy(_runner.gameObject);
             _map.Clear();
         }
     }

@@ -19,25 +19,21 @@ namespace BigHeart
             DontDestroyOnLoad(gameObject);
 
             // ───── EventBus ─────
-            var bus = new EventBusService();
-            ServiceRegistry.Register<IEventBusService>(bus);
-            // Если нужен раннер — повесь на этот же объект
-            // gameObject.AddComponent<EventBusRunner>().Init(bus);
+            ServiceRegistry.Register(new EventBusService());
 
             // ───── Containment ─────
             ServiceRegistry.Register<IContainmentService>(new ContainmentService());
 
             // ───── Catalog ─────
-            ServiceRegistry.Register<ICatalog<ItemDefinition>>(new ItemCatalogService());
+            ServiceRegistry.Register<ICatalog<ItemDefinition>>(new ItemCatalogService("Data/Items"));
 
             // ───── Фабрики ─────
             ServiceRegistry.Register<IEntityFactory<ItemRuntime, ItemDefinition>>(new ItemFactory());
 
             // ───── Save/Load ─────
-            var saveDir  = Path.Combine(Application.persistentDataPath, "Saves");
-            var strategy = new FileSaveLoadStrategy(fileName: "BigHeart.json", subFolder: "Saves"); // Odin JSON внутри
+            var strategy = new OdinFileStrategy(fileName: "BigHeart.json", subFolder: "Saves");
             ServiceRegistry.Register<ISaveLoadStrategy>(strategy);
-            ServiceRegistry.Register<ISaveLoadService>(new BigHeart.Save.SaveLoadService(strategy));
+            ServiceRegistry.Register<ISaveLoadService>(new SaveLoadService(strategy));
 
             // ───── Короутины/брейн (если нужно) ─────
             ServiceRegistry.Register<ICoroutineService>(new CoroutineService());

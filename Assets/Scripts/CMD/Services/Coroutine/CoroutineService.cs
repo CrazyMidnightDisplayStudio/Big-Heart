@@ -9,19 +9,26 @@ namespace CMD.Services
     public sealed class CoroutineService : Service, ICoroutineService
     {
         /*────────────────── internal runner ──────────────────*/
-        private sealed class CoroutineRunner : MonoBehaviour
+        private sealed class Runner : MonoBehaviour
         {
+            public CoroutineService coroutineService;
         }
 
         private readonly Dictionary<uint, Coroutine> _running = new();
-        private readonly CoroutineRunner _runner;
+        private  Runner _runner;
         private uint _nextId = 1;
 
         public CoroutineService() : base("CoroutineService")
         {
-            var go = new GameObject("[CoroutineService]");
+        }
+
+        protected override void Init()
+        {
+            base.Init();
+            var go = new GameObject("[CMD Coroutine runner]");
             UnityEngine.Object.DontDestroyOnLoad(go);
-            _runner = go.AddComponent<CoroutineRunner>();
+            _runner = go.AddComponent<Runner>();
+            _runner.coroutineService = this;
         }
 
         /*────────────────────── API ───────────────────────────*/
@@ -70,15 +77,7 @@ namespace CMD.Services
             _running.Clear();
         }
 
-        /*────────────────── cleanup (optional) ────────────────*/
-        public override void Dispose()
-        {
-            StopAll();
-            if (_runner) UnityEngine.Object.Destroy(_runner.gameObject);
-        }
-
         /*───────────────── helpers / wrappers ─────────────────*/
-
         uint NextId()
         {
             if (_nextId == 0) // wrap-around после uint.MaxValue
@@ -113,6 +112,13 @@ namespace CMD.Services
             }
 
             _running.Remove(id);
+        }
+
+        /*────────────────── cleanup (optional) ────────────────*/
+        public override void Dispose()
+        {
+            StopAll();
+            if (_runner) UnityEngine.Object.Destroy(_runner.gameObject);
         }
     }
 }

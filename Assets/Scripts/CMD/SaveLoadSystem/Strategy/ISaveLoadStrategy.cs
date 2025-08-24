@@ -10,6 +10,6 @@ namespace CMD.Services
         void Save(IEnumerable<ISaveLoadObject> objectsToSave);
 
         /// <summary>Прочитать все чанки из хранилища. Пустой массив — если сейва нет.</summary>
-        SaveLoadData[] Load();
+        SaveLoadSystem.SaveLoadData[] Load();
     }
 }

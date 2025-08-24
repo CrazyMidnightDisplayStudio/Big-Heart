@@ -7,9 +7,9 @@ namespace BigHeart.Services
     {
         private readonly ItemCatalogFromResources _itemCatalog;
 
-        public ItemCatalogService() : base("ItemCatalog")
+        public ItemCatalogService(params string[] roots) : base("ItemCatalog")
         {
-            _itemCatalog = new ItemCatalogFromResources();
+            _itemCatalog = new ItemCatalogFromResources(roots);
         }
 
         public ItemDefinition GetByKey(string key) => _itemCatalog.GetByKey(key);

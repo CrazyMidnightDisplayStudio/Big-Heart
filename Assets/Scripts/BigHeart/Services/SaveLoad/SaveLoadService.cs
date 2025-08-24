@@ -1,153 +1,213 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BigHeart.Services;
 using CMD.Base;
+using CMD.Common;
 using CMD.Core;
 using CMD.Events.ContainmentEvents;
 using CMD.SaveLoadSystem;
 using CMD.Services;
 using UnityEngine;
 using Object = UnityEngine.Object;
-namespace BigHeart.Save
+
+namespace BigHeart.Services
 {
-    /// <summary>
-    /// Оркестратор сейвов/лоадов:
-    ///  - Save: собирает всех ISaveLoadObject в сцене и отдаёт их стратегии.
-    ///  - Load: чистит сцену, создаёт runtime-сущности из чанков, раскладывает их по контейнерам,
-    ///          затем раздаёт остальные чанки компонентам (UI/настройки и т.п.).
-    /// </summary>
+    /// Маркер, чтобы НЕ удалять объект при LoadGameFresh (например, игрок/его контейнеры и UI-якоря).
+    public interface IPersistentRuntime
+    {
+    }
+
+    /// Политика размещения при загрузке (на случай занятых слотов и т.п.)
+    public interface IPlacementPolicy
+    {
+        bool TryPlace(IContainmentService cs, BaseEntityRuntime entity, ContainerData cd);
+    }
+
+    /// Строгая политика: строго в указанный слот; если занято — лог и возврат false.
+    public sealed class StrictPlacementPolicy : IPlacementPolicy
+    {
+        public bool TryPlace(IContainmentService cs, BaseEntityRuntime entity, ContainerData cd)
+            => cs.TryPut(entity, cd, EChangeOrigin.load);
+    }
+
+    /// Оркестратор сейвов/лоадов, единая точка входа.
     public sealed class SaveLoadService : ISaveLoadService
     {
         private readonly ISaveLoadStrategy _strategy;
-
-        // Зависимости игры (типизировано под Item; легко расширить позже).
+        private readonly IContainmentService _containment;
         private readonly ICatalog<ItemDefinition> _itemCatalog;
         private readonly IEntityFactory<ItemRuntime, ItemDefinition> _itemFactory;
-        private readonly IContainmentService _containment;
+        private readonly IPlacementPolicy _placement;
 
-        public SaveLoadService(ISaveLoadStrategy strategy)
+        public SaveLoadService(
+            ISaveLoadStrategy strategy,
+            IPlacementPolicy placement = null
+        )
         {
-            _strategy     = strategy ?? throw new ArgumentNullException(nameof(strategy));
-            _itemCatalog  = ServiceRegistry.Get<ICatalog<ItemDefinition>>();
-            _itemFactory  = ServiceRegistry.Get<IEntityFactory<ItemRuntime, ItemDefinition>>();
-            _containment  = ServiceRegistry.Get<IContainmentService>();
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _containment = ServiceRegistry.Get<IContainmentService>();
+            _itemCatalog = ServiceRegistry.Get<ICatalog<ItemDefinition>>();
+            _itemFactory = ServiceRegistry.Get<IEntityFactory<ItemRuntime, ItemDefinition>>();
+            _placement = placement ?? new StrictPlacementPolicy();
         }
 
-        /*──────────────────────── Save ────────────────────────*/
+        /*──────────── Save ────────────*/
         public void SaveGame()
         {
-            var participants = Object
-                .FindObjectsOfType<MonoBehaviour>(includeInactive: true)
+            // Берём все ISaveLoadObject (активные и неактивные)
+            var participants = Object.FindObjectsOfType<MonoBehaviour>(includeInactive: true)
                 .OfType<ISaveLoadObject>()
                 .ToArray();
 
             _strategy.Save(participants);
-            Debug.Log($"[Save] Collected {participants.Length} objects and wrote via {_strategy.GetType().Name}");
+            Debug.Log($"[Save] wrote {participants.Length} objects via {_strategy.GetType().Name}");
         }
 
-        /*──────────────────────── Load ────────────────────────*/
+        /*──────────── Load (чистая загрузка) ────────────*/
         public void LoadGameFresh()
         {
             var chunks = _strategy.Load() ?? Array.Empty<SaveLoadData>();
 
-            // 0) Удаляем все текущие runtime-сущности (инвентари/контейнеры не трогаем)
-            foreach (var e in Object.FindObjectsOfType<BaseEntityRuntime>(includeInactive: true))
-                Object.Destroy(e.gameObject);
+            // 0) Очистка: удаляем ВСЕ динамические сущности; инфраструктуру/владельцев не трогаем.
+            ClearDynamicEntities();
 
-            // 1) Делим чанки: сущности vs остальные
-            var entityChunks    = chunks.Where(IsEntityChunk).ToList();
-            var nonEntityChunks = chunks.Except(entityChunks).ToList();
+            // 1) Разделяем на entity-чанки и component-чанки
+            var entityChunks = new List<SaveLoadData>(capacity: chunks.Length);
+            var nonEntityChunks = new List<SaveLoadData>(capacity: chunks.Length);
+            foreach (var c in chunks)
+                (IsEntityChunk(c) ? entityChunks : nonEntityChunks).Add(c);
 
-            var created = new Dictionary<string, BaseEntityRuntime>(entityChunks.Count);
+            // 2) Спавним все entity (без раскладки по контейнерам)
+            var createdById = new Dictionary<string, BaseEntityRuntime>(entityChunks.Count);
 
-            // 2) Создаём все сущности. События контейнеров подавим до момента раскладки.
             using (_containment.SuppressEventsScope())
             {
-                foreach (var c in entityChunks)
+                foreach (var ch in entityChunks)
                 {
-                    EntitySaveData dto;
-                    try { dto = c.Read<EntitySaveData>(); }
-                    catch (Exception ex) { Debug.LogException(ex); continue; }
+                    if (!TryReadDto(ch, out var dto)) continue;
 
                     if (string.IsNullOrEmpty(dto.definitionKey))
                     {
-                        Debug.LogWarning($"[Load] Empty definitionKey for chunk {c.Id}");
+                        Debug.LogWarning($"[Load] chunk {ch.Id}: empty definitionKey");
                         continue;
                     }
 
-                    // Пока поддерживаем только ItemDefinition/ItemRuntime.
-                    if (_itemCatalog.TryGetByKey(dto.definitionKey, out var itemDef))
+                    // Пока поддерживаем Item; расширение — аналогично.
+                    if (_itemCatalog.TryGetByKey(dto.definitionKey, out var def))
                     {
-                        var rt = _itemFactory.Create(itemDef, Vector3.zero, Quaternion.identity);
+                        var rt = _itemFactory.Create(def, Vector3.zero, Quaternion.identity);
 
-                        // Важно: восстановить стабильный GUID ДО Restore, если он есть в сейве.
-                        if (Guid.TryParse(dto.entityId, out var gid))
-                            rt.GetComponent<StableId>()?.SetFromSave(gid);
+                        // Восстановить StableId ДО применения стейта.
+                        if (TryParseGuidLoose(dto.entityId, out var gid))
+                            (rt.GetComponent<StableId>() ?? rt.gameObject.AddComponent<StableId>()).SetFromSave(gid);
 
-                        rt.Restore(dto);
-                        created[rt.EntityId] = rt;
+                        // Применяем стейт и world-позу (если это World).
+                        // Локацию Container НЕ трогаем здесь — это следующая фаза.
+                        if (rt is ItemRuntime item)
+                            item.RestoreFromDto(dto, initDefinition: false);
+                        else
+                            rt.GetType().GetMethod("RestoreFromDto")?.Invoke(rt, new object[]
+                            {
+                                dto,
+                                false
+                            });
+
+                        createdById[rt.EntityId] = rt;
                     }
                     else
                     {
-                        Debug.LogWarning($"[Load] Unknown definition '{dto.definitionKey}' — no catalog/factory registered for it. Chunk {c.Id} skipped.");
+                        Debug.LogWarning($"[Load] chunk {ch.Id}: unknown definition '{dto.definitionKey}'");
                     }
                 }
 
-                // 3) Разложим по контейнерам на основе location у каждого dto.
-                foreach (var c in entityChunks)
+                // 3) ВТОРОЙ проход: раскладка по контейнерам
+                foreach (var ch in entityChunks)
                 {
-                    EntitySaveData dto;
-                    try { dto = c.Read<EntitySaveData>(); }
-                    catch { continue; }
+                    if (!TryReadDto(ch, out var dto)) continue;
+                    if (!createdById.TryGetValue(dto.entityId, out var entity)) continue;
 
-                    if (dto.location == null) continue;
-
-                    if (dto.location.kind == EEntityLocationKind.container &&
-                        created.TryGetValue(dto.entityId, out var ent))
+                    if (dto.location.kind == EEntityLocationKind.container)
                     {
-                        // ownerId + containerKey + index (+ slotKey, если у тебя есть)
-                        _containment.Put(
-                            dto.location.ownerId,
-                            dto.location.containerKey,
-                            ent,
-                            dto.location.index,
-                            dto.location.slotKey,
-                            EChangeOrigin.load   // пометим источник
-                        );
+                        var cd = dto.location.container;
+                        if (!_placement.TryPlace(_containment, entity, cd))
+                            Debug.LogWarning(
+                                $"[Load] place failed: {entity.EntityId} → {cd.ownerId}/{cd.containerKey}[{cd.index}]");
                     }
-                    else if (dto.location.kind == EEntityLocationKind.world &&
-                             created.TryGetValue(dto.entityId, out var entWorld))
-                    {
-                        // позиция уже восстановлена в BaseEntityRuntime.Restore(dto)
-                        // ничего делать не нужно
-                    }
+                    // World-позицию уже поставили в RestoreFromDto (выше).
                 }
             }
 
-            // 4) Раздаём остальные чанки адресно соответствующим компонентам по их SaveId.
-            var recipients = Object.FindObjectsOfType<MonoBehaviour>(includeInactive: true)
-                               .OfType<ISaveLoadObject>()
-                               .ToDictionary(o => o.ComponentSaveId, o => o);
+            // 4) Рассылаем component-чанки адресно
+            ApplyComponentChunks(nonEntityChunks);
 
-            int applied = 0;
-            foreach (var c in nonEntityChunks)
+            Debug.Log($"[Load] entities={createdById.Count}, componentChunks={nonEntityChunks.Count}");
+        }
+
+        /*──────────── Helpers ────────────*/
+
+        private void ClearDynamicEntities()
+        {
+            var all = Object.FindObjectsOfType<BaseEntityRuntime>(includeInactive: true);
+            foreach (var rt in all)
+            {
+                if (rt is IPersistentRuntime) continue; // игрок, сундуки-владельцы, инфраструктура
+                Object.Destroy(rt.gameObject);
+            }
+        }
+
+        private static bool IsEntityChunk(SaveLoadData c)
+            => c.Type == ESaveType.entity
+                || (!string.IsNullOrEmpty(c.Id) && c.Id.StartsWith("entity:", StringComparison.Ordinal));
+
+        private static bool TryReadDto(SaveLoadData c, out EntitySaveData dto)
+        {
+            try
+            {
+                dto = c.Read<EntitySaveData>();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                dto = default;
+                return false;
+            }
+        }
+
+        private static bool TryParseGuidLoose(string s, out Guid g)
+        {
+            if (Guid.TryParse(s, out g)) return true;
+            if (!string.IsNullOrEmpty(s) && s.Length == 32)
+                return Guid.TryParseExact(s, "N", out g);
+            return false;
+        }
+
+        private static void ApplyComponentChunks(List<SaveLoadData> componentChunks)
+        {
+            // Карта "SaveId -> ISaveLoadObject". Если дубликаты — берём первый и логируем.
+            var recipients = new Dictionary<string, ISaveLoadObject>(StringComparer.Ordinal);
+            foreach (var o in Object.FindObjectsOfType<MonoBehaviour>(includeInactive: true)
+                         .OfType<ISaveLoadObject>())
+            {
+                if (string.IsNullOrEmpty(o.ComponentSaveId)) continue;
+                if (!recipients.TryAdd(o.ComponentSaveId, o))
+                    Debug.LogWarning($"[Load] duplicate ComponentSaveId '{o.ComponentSaveId}' — keeping first");
+            }
+
+            var applied = 0;
+            foreach (var c in componentChunks)
             {
                 if (recipients.TryGetValue(c.Id, out var target))
                 {
-                    try { target.RestoreData(c); applied++; }
+                    try
+                    {
+                        target.RestoreData(c);
+                        applied++;
+                    }
                     catch (Exception ex) { Debug.LogException(ex); }
                 }
             }
-
-            Debug.Log($"[Load] Created entities={created.Count}, applied component chunks={applied}");
-        }
-
-        /*──────────────────────── Helpers ────────────────────────*/
-        private static bool IsEntityChunk(SaveLoadData c)
-        {
-            // Совместимо и с флагом ESaveType.Entity, и с Id-форматом "entity:{guid}"
-            return c.Type == ESaveType.entity || (c.Id != null && c.Id.StartsWith("entity:", StringComparison.Ordinal));
+            Debug.Log($"[Load] applied component chunks: {applied}/{componentChunks.Count}");
         }
     }
 }

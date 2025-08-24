@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using CMD.Base; // BaseEntityRuntime, StableId
+using CMD.Base;
+using CMD.Common; // BaseEntityRuntime, StableId
 using CMD.Core; // ServiceRegistry
 using CMD.Services; // IContainmentService, IEntityContainer
 using UnityEngine;

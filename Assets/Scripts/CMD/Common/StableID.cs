@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace CMD.Core
+namespace CMD.Common
 {
     [DisallowMultipleComponent]
     public sealed class StableId : MonoBehaviour

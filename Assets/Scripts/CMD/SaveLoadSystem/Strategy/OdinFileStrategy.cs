@@ -8,12 +8,12 @@ using UnityEngine;
 namespace CMD.Services
 {
     /// <summary>JSON-файл в Application.persistentDataPath, сериализация через Odin.</summary>
-    public sealed class FileSaveLoadStrategy : ISaveLoadStrategy
+    public sealed class OdinFileStrategy : ISaveLoadStrategy
     {
         private readonly string _folderPath;
         private readonly string _filePath;
 
-        public FileSaveLoadStrategy(string fileName = "GameSave.json", string subFolder = "Saves")
+        public OdinFileStrategy(string fileName = "GameSave.json", string subFolder = "Saves")
         {
             _folderPath = Path.Combine(Application.persistentDataPath, subFolder);
             _filePath = Path.Combine(_folderPath, fileName);
@@ -21,7 +21,7 @@ namespace CMD.Services
 
         public void Save(IEnumerable<ISaveLoadObject> objectsToSave)
         {
-            var list = new List<SaveLoadData>();
+            var list = new List<SaveLoadSystem.SaveLoadData>();
             foreach (var o in objectsToSave)
             {
                 try

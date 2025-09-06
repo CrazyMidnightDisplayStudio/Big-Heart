@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using BigHeart.Services;
+using CatalogKeys;
 using UnityEngine;
 using CMD.Core;
 using CMD.Services;
@@ -19,13 +20,16 @@ namespace BigHeart
             DontDestroyOnLoad(gameObject);
 
             // ───── EventBus ─────
-            ServiceRegistry.Register(new EventBusService());
+            ServiceRegistry.Register<IEventBusService>(new EventBusService());
 
             // ───── Containment ─────
             ServiceRegistry.Register<IContainmentService>(new ContainmentService());
 
             // ───── Catalog ─────
-            ServiceRegistry.Register<ICatalog<ItemDefinition>>(new ItemCatalogService("Data/Items"));
+            var catalog = new CatalogService();
+            ServiceRegistry.Register<ICatalog>(catalog);
+            // Автопоиск всех ICatalogRegistrar (включая сгенерированные)
+            CatalogAutoRegistrar.Run(catalog);
 
             // ───── Фабрики ─────
             ServiceRegistry.Register<IEntityFactory<ItemRuntime, ItemDefinition>>(new ItemFactory());

@@ -10,7 +10,7 @@ namespace CMD
         [Serializable]
         public sealed class Entry
         {
-            [Tooltip("Путь ОТНОСИТЕЛЬНО Assets/Resources. Пример: CMD.Catalog/Audio")]
+            [Tooltip("Путь ОТНОСИТЕЛЬНО Assets/Resources/CMDCatalog. Пример: Audio")]
             public string resourcesPath;
 
             [Tooltip("Полное имя типа (желательно с namespace). Должен наследоваться от UnityEngine.Object.\n" +

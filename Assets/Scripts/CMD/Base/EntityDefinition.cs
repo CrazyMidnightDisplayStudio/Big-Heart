@@ -6,7 +6,6 @@ namespace CMD.Base
     [CreateAssetMenu(menuName = "CMD.Core/Entity", fileName = "Entity_")]
     public class EntityDefinition : ScriptableObject
     {
-        [SerializeField] private string key;
-        public string Key => key;
+        public string Key => this.name;
     }
 }

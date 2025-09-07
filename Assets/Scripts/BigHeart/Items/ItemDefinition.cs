@@ -1,4 +1,7 @@
-﻿using CMD.Base;
+﻿using CatalogKeys;
+using CMD.Base;
+using CMD.Core;
+using CMD.Services;
 using UnityEngine;
 
 namespace BigHeart
@@ -12,6 +15,14 @@ namespace BigHeart
 
         [Header("Prefab")]
         [SerializeField] private GameObject prefab;
-        public GameObject Prefab => prefab;
+        public GameObject Prefab
+        {
+            get
+            {
+                if (prefab) { return prefab; }
+                var genericPrefab = ServiceRegistry.Get<ICatalog>().Get<UnityEngine.GameObject>(CMDCatalog.Prefabs.GenericItem);
+                return genericPrefab;
+            }
+        }
     }
 }

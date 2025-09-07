@@ -66,7 +66,7 @@ namespace BigHeart.GD
             }
 
             // Достаем сервисы (обязательно проверяем на null)
-            var catalog = ServiceRegistry.Get<ICatalog<ItemDefinition>>();
+            var catalog = ServiceRegistry.Get<ICatalog>();
             var factory = ServiceRegistry.Get<IEntityFactory<ItemRuntime, ItemDefinition>>();
             if (catalog == null || factory == null)
             {
@@ -75,7 +75,7 @@ namespace BigHeart.GD
                 return;
             }
 
-            var def = catalog.GetByKey(definitionKey);
+            var def = catalog.Get<BigHeart.ItemDefinition>(definitionKey);
             if (def == null)
             {
                 EditorUtility.DisplayDialog("Unknown definition",

@@ -35,7 +35,7 @@ namespace BigHeart.Services
     {
         private readonly ISaveLoadStrategy _strategy;
         private readonly IContainmentService _containment;
-        private readonly ICatalog<ItemDefinition> _itemCatalog;
+        private readonly ICatalog _catalog;
         private readonly IEntityFactory<ItemRuntime, ItemDefinition> _itemFactory;
         private readonly IPlacementPolicy _placement;
 
@@ -46,7 +46,7 @@ namespace BigHeart.Services
         {
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _containment = ServiceRegistry.Get<IContainmentService>();
-            _itemCatalog = ServiceRegistry.Get<ICatalog<ItemDefinition>>();
+            _catalog = ServiceRegistry.Get<ICatalog>();
             _itemFactory = ServiceRegistry.Get<IEntityFactory<ItemRuntime, ItemDefinition>>();
             _placement = placement ?? new StrictPlacementPolicy();
         }
@@ -93,7 +93,7 @@ namespace BigHeart.Services
                     }
 
                     // Пока поддерживаем Item; расширение — аналогично.
-                    if (_itemCatalog.TryGetByKey(dto.definitionKey, out var def))
+                    if (_catalog.TryGet<BigHeart.ItemDefinition>(dto.definitionKey, out var def))
                     {
                         var rt = _itemFactory.Create(def, Vector3.zero, Quaternion.identity);
 

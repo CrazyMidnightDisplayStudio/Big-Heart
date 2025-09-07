@@ -1,6 +1,7 @@
 ﻿using CMD.Base;
 using CMD.Core;
 using CMD.SaveLoadSystem;
+using CMD.Services;
 
 namespace BigHeart
 {
@@ -33,8 +34,8 @@ namespace BigHeart
         {
             if (initDefinition)
             {
-                var catalog = ServiceRegistry.Get<ICatalog<EntityDefinition>>();
-                var def = catalog.GetByKey(dto.definitionKey);
+                var catalog = ServiceRegistry.Get<ICatalog>();
+                var def = catalog.Get<BigHeart.ItemDefinition>(dto.definitionKey);
                 Init(def);
             }
 

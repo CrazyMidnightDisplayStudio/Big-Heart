@@ -1,9 +1,8 @@
 ﻿using System;
-using BigHeart.Services;
 using CMD.Base;
 using CMD.Common;
-using CMD.Core;
 using CMD.SaveLoadSystem;
+using CMD.Services;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -20,10 +19,18 @@ namespace BigHeart
             var runtime = go.GetComponent<ItemRuntime>()
                 ?? throw new InvalidOperationException($"Prefab '{pp.Prefab.name}' must have BaseEntityRuntime.");
             runtime.Init(definition);
+            if (go.TryGetComponent<ItemView>(out var view))
+            {
+                view.Bind(runtime);
+            }
+            else
+            {
+                Debug.LogError($"Prefab '{pp.Prefab.name}' must have BaseEntityView.");
+            }
             return runtime;
         }
 
-        public ItemRuntime CreateFromSave(SaveLoadData entityChunk, ICatalog<ItemDefinition> catalog)
+        public ItemRuntime CreateFromSave(SaveLoadData entityChunk, ICatalog catalog)
         {
             if (entityChunk.Type != ESaveType.entity)
                 throw new InvalidOperationException($"Expected entity chunk, got {entityChunk.Type}");
@@ -32,7 +39,7 @@ namespace BigHeart
             var dto = entityChunk.Read<EntitySaveData>();
 
             // 2) Definition + Prefab
-            var def = catalog.GetByKey(dto.definitionKey)
+            var def = catalog.Get<BigHeart.ItemDefinition>(dto.definitionKey)
                 ?? throw new InvalidOperationException($"Definition '{dto.definitionKey}' not found");
 
             if (def is not IPrefabProvider pp || pp.Prefab == null)
@@ -52,7 +59,14 @@ namespace BigHeart
                 ?? throw new InvalidOperationException($"Prefab '{pp.Prefab.name}' must have ItemRuntime");
 
             runtime.Init(def);
-            go.GetComponent<ItemView>()?.Bind(runtime);
+            if (go.TryGetComponent<ItemView>(out var view))
+            {
+                view.Bind(runtime);
+            }
+            else
+            {
+                Debug.LogError($"Prefab '{pp.Prefab.name}' must have BaseEntityView.");
+            }
 
             // 6) Применить стейт и (если нужно) позу мира.
             //    Локацию 'Container' применять НЕ здесь — это фаза раскладки после спавна.

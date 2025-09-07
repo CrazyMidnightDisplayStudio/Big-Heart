@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace CMD.Services
 {
@@ -9,6 +10,7 @@ namespace CMD.Services
 
         public CatalogService() : base("Catalog")
         {
+            Debug.Log("Usage: Get<UnityEngine.AudioClip>(Keys_CMD_Catalog_Audio.cartoon_jump_6462)");
         }
 
         public void RegisterFolder<T>(IFolderCatalog<T> folder) where T : UnityEngine.Object
@@ -41,5 +43,8 @@ namespace CMD.Services
         {
             return Folder<T>().TryGet(key, out asset);
         }
+
+        public T Get<T>(CatalogKey<T> catalogKey) where T : UnityEngine.Object => Get<T>(catalogKey.Value);
+        public bool TryGet<T>(CatalogKey<T> catalogKey, out T asset) where T : UnityEngine.Object => TryGet<T>(catalogKey.Value, out asset);
     }
 }

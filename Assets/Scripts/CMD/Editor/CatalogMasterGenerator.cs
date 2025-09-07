@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,8 @@ namespace CMD
 {
     public sealed class CatalogMasterGenerator : AssetPostprocessor
     {
-        private const string _configResPath = "CMD.Catalog/CatalogMasterConfig";
+        private const string ROOT = "CMDCatalog"; // <— КОРЕНЬ ресурсов
+        private const string _configResPath = "CMDCatalog/CatalogMasterConfig";
         private const string _keysNamespace = "CatalogKeys";
         private static bool _isRebuilding;
 
@@ -75,7 +77,9 @@ namespace CMD
         {
             keysCount = 0;
 
-            var absDir = AbsResourcesDir(e.resourcesPath);
+            var resPath = $"{ROOT}/{e.resourcesPath}".Replace('\\', '/');
+
+            var absDir = AbsResourcesDir(resPath);
             var genDir = absDir + "/__Generated";
             Directory.CreateDirectory(genDir);
 
@@ -91,22 +95,31 @@ namespace CMD
                     .Distinct(StringComparer.Ordinal)
                     .OrderBy(x => x, StringComparer.Ordinal)
                     .ToList()
-                : new System.Collections.Generic.List<string>();
+                : new List<string>();
 
             keysCount = names.Count;
 
-            var suffix = Sanitize(e.resourcesPath.Replace('/', '_').Replace('\\', '_').Replace('.', '_'));
-            var keysCls = $"Keys_{suffix}";
-            var regCls = $"__AutoRegistrar_{suffix}";
-            var keysPath = $"{genDir}/{keysCls}.g.cs";
-            var regPath = $"{genDir}/{regCls}.g.cs";
+            // категория — первый сегмент после CMDCatalog/
+            var category = e.resourcesPath.Split('/', '\\').FirstOrDefault() ?? "Root";
+            var safeCategory = Sanitize(category);
+
+            var keysPath = $"{genDir}/Keys_{safeCategory}.g.cs";
+            var regPath = $"{genDir}/__AutoRegistrar_{safeCategory}.g.cs";
 
             bool changed = false;
 
-            var keysCode = BuildKeysCode(_keysNamespace, keysCls, names);
+            const bool STRONG_KEYS = true;
+
+            var keysCode = BuildKeysCodeNested(
+                rootClass: ROOT,
+                categoryClass: safeCategory,
+                typeCs: MakeGlobalType(e.typeName),
+                names: names,
+                strongKeys: STRONG_KEYS
+            );
             changed |= WriteIfChanged(keysPath, keysCode);
 
-            var regCode = BuildRegistrarCode(regCls, e.typeName, e.resourcesPath);
+            var regCode = BuildRegistrarCode($"__AutoRegistrar_{safeCategory}", e.typeName, resPath);
             changed |= WriteIfChanged(regPath, regCode);
 
             if (changed)
@@ -125,6 +138,12 @@ namespace CMD
 
         // ───────────── helpers ─────────────
 
+        private static string MakeGlobalType(string typeName)
+        {
+            typeName = (typeName ?? "").Trim();
+            return typeName.Contains(".") ? $"global::{typeName}" : typeName;
+        }
+
         private static CatalogMasterConfig LoadConfig()
         {
             var cfg = Resources.Load<CatalogMasterConfig>(_configResPath);
@@ -134,7 +153,7 @@ namespace CMD
                 Debug.LogError(
                     "[Catalog] CatalogMasterConfig not found.\n" +
                     $"Create one via menu: Tools/Catalog/Create Default Config (Resources)\n" +
-                    $"Config path: Assets/Resources/{_configResPath}.asset\n");
+                    $"Config path: Assets/Resources/CMDCatalog/{_configResPath}.asset\n");
                 return null;
             }
             return cfg;
@@ -163,7 +182,7 @@ namespace CMD
             foreach (var e in cfg.entries)
             {
                 if (string.IsNullOrWhiteSpace(e.resourcesPath)) continue;
-                var dir = AbsResourcesDir(e.resourcesPath);
+                var dir = AbsResourcesDir($"{ROOT}/{e.resourcesPath}");
                 var gen = dir + "/__Generated";
 
                 foreach (var p in paths)
@@ -178,15 +197,28 @@ namespace CMD
             return false;
         }
 
-        private static string BuildKeysCode(string ns, string className, System.Collections.Generic.IEnumerable<string> names)
+        private static string BuildKeysCodeNested(string rootClass, string categoryClass, string typeCs, IEnumerable<string> names, bool strongKeys)
         {
             var sb = new StringBuilder();
             sb.AppendLine("// AUTO-GENERATED. DO NOT EDIT");
             sb.AppendLine("#pragma warning disable");
-            sb.AppendLine($"namespace {ns} {{ public static class {className} {{");
+            if (strongKeys) sb.AppendLine("using CMD.Services;");
+            sb.AppendLine("namespace CatalogKeys {");
+            sb.AppendLine($"  public static partial class {rootClass} {{");
+            sb.AppendLine($"    public static class {categoryClass} {{");
+
             foreach (var n in names)
-                sb.AppendLine($"  public const string {Sanitize(n)} = \"{n}\";");
-            sb.AppendLine("}}");
+            {
+                var id = Sanitize(n);
+                if (strongKeys)
+                    sb.AppendLine($"      public static readonly CatalogKey<{typeCs}> {id} = new(\"{n}\");");
+                else
+                    sb.AppendLine($"      public const string {id} = \"{n}\";");
+            }
+
+            sb.AppendLine("    }");
+            sb.AppendLine("  }");
+            sb.AppendLine("}");
             return sb.ToString();
         }
 
